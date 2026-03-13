@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minesweeper Deck-Building Roguelike</title>
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+    <div id="game-container">
+        <!-- HUD -->
+        <div id="hud">
+            <div class="hud-item">
+                <span class="hud-label">Mines</span>
+                <span class="hud-value" id="mines-count">0</span>
+            </div>
+            <div class="hud-item">
+                <span class="hud-label">Time</span>
+                <span class="hud-value" id="time-elapsed">0</span>
+            </div>
+        </div>
+
+        <!-- Canvas Container -->
+        <div id="canvas-container">
+            <canvas id="game-canvas"></canvas>
+        </div>
+    </div>
+
+    <!-- Menu -->
+    <div id="menu">
+        <h1 class="menu-title">Minesweeper</h1>
+        <p class="menu-subtitle">Deck-Building Roguelike</p>
+        <div class="menu-buttons">
+            <button class="menu-button" id="start-button">Start Game</button>
+        </div>
+    </div>
+
+    <!-- Dialog Overlay -->
+    <div id="dialog-overlay">
+        <div id="dialog">
+            <h2 id="dialog-title">Title</h2>
+            <p id="dialog-message">Message</p>
+            <div id="dialog-actions"></div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module">
+        import Game from './js/core/Game.js';
+        import EventBus from './js/core/EventBus.js';
+        import CONFIG from './js/config.js';
+
+        // Global game instance
+        let game;
+
+        // Initialize game when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('game-canvas');
+            game = new Game();
+            game.initialize(canvas);
+
+            // Setup menu buttons
+            document.getElementById('start-button').addEventListener('click', () => {
+                document.getElementById('menu').classList.add('hidden');
+                game.startNewGame();
+            });
+
+            // Setup dialog events
+            EventBus.on('showDialog', (data) => {
+                showDialog(data.title, data.message, data.actions);
+            });
+
+            // Setup HUD update events
+            EventBus.on('updateHUD', (data) => {
+                document.getElementById('mines-count').textContent = data.minesRemaining;
+                const seconds = Math.floor(data.timeElapsed / 1000);
+                document.getElementById('time-elapsed').textContent = seconds;
+            });
+
+            // Setup state change events
+            EventBus.on('stateChanged', (data) => {
+                if (data.newState === CONFIG.gameState.MENU) {
+                    document.getElementById('menu').classList.remove('hidden');
+                }
+            });
+        });
+
+        // Show dialog function
+        function showDialog(title, message, actions) {
+            const overlay = document.getElementById('dialog-overlay');
+            const titleEl = document.getElementById('dialog-title');
+            const messageEl = document.getElementById('dialog-message');
+            const actionsEl = document.getElementById('dialog-actions');
+
+            titleEl.textContent = title;
+            messageEl.textContent = message;
+
+            // Clear previous actions
+            actionsEl.innerHTML = '';
+
+            // Add action buttons
+            actions.forEach((action, index) => {
+                const button = document.createElement('button');
+                button.className = 'dialog-button';
+                if (index > 0) button.classList.add('secondary');
+                button.textContent = action.label;
+                button.addEventListener('click', () => {
+                    overlay.style.display = 'none';
+                    if (action.action) action.action();
+                });
+                actionsEl.appendChild(button);
+            });
+
+            // Show dialog
+            overlay.style.display = 'flex';
+        }
+    </script>
+</body>
+</html>
