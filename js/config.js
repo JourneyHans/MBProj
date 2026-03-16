@@ -28,7 +28,7 @@ const CONFIG = {
     startExtraLives: 0,
     startGold: 0,
     cardsPerTurn: 3,
-    maxHandSize: 8
+    maxHandSize: 5
   },
 
   // Progression settings
@@ -43,7 +43,34 @@ const CONFIG = {
   cards: {
     maxDeckSize: 30,
     minDeckSize: 10,
-    maxRerolls: 3
+    maxRerolls: 3,
+    animationDuration: 300,
+    highlightDuration: 3000,
+    maxHandSize: 5
+  },
+
+  // Card colors
+  cardColors: {
+    common: {
+      border: '#64748b',
+      bg: '#1e293b',
+      shadow: 'rgba(100, 116, 139, 0.3)'
+    },
+    rare: {
+      border: '#3b82f6',
+      bg: '#1e3a5f',
+      shadow: 'rgba(59, 130, 246, 0.4)'
+    },
+    epic: {
+      border: '#a855f7',
+      bg: '#3b0764',
+      shadow: 'rgba(168, 85, 247, 0.5)'
+    },
+    legendary: {
+      border: '#fbbf24',
+      bg: '#78350f',
+      shadow: 'rgba(251, 191, 36, 0.6)'
+    }
   },
 
   // Game states

@@ -9,6 +9,9 @@ import GameLoop from './GameLoop.js';
 import EventBus from './EventBus.js';
 import Grid from '../grid/Grid.js';
 import GridRenderer from '../grid/GridRenderer.js';
+import Deck from '../cards/Deck.js';
+import Hand from '../cards/Hand.js';
+import CardUI from '../cards/CardUI.js';
 
 class Game {
   constructor() {
@@ -41,6 +44,21 @@ class Game {
       startTime: 0
     };
 
+    // Card system
+    this.deck = null;
+    this.hand = null;
+    this.cardUI = null;
+    this.energy = CONFIG.player.startEnergy;
+    this.maxEnergy = CONFIG.player.maxEnergy;
+    this.selectedCard = null;
+    this.targetingMode = false;
+
+    // Player state
+    this.player = {
+      extraLives: CONFIG.player.startExtraLives,
+      gold: CONFIG.player.startGold
+    };
+
     // Setup event listeners
     this.setupEventListeners();
   }
@@ -59,6 +77,9 @@ class Game {
     // Setup input handlers
     this.setupInputHandlers();
 
+    // Initialize card system
+    this.initializeCardSystem();
+
     // Setup responsive canvas
     this.resizeCanvas();
 
@@ -73,10 +94,15 @@ class Game {
    * Setup event listeners
    */
   setupEventListeners() {
+    // Grid events
     EventBus.on('gridComplete', () => this.onGridComplete());
     EventBus.on('mineTripped', () => this.onMineTripped());
     EventBus.on('cellRevealed', (cell) => this.onCellRevealed(cell));
     EventBus.on('cellFlagged', (cell) => this.onCellFlagged(cell));
+
+    // Card events
+    EventBus.on('cardPlayed', (data) => this.onCardPlayed(data));
+    EventBus.on('energyChanged', (data) => this.onEnergyChanged(data));
   }
 
   /**
@@ -112,7 +138,13 @@ class Game {
 
     const cellPos = this.gridRenderer.getCellFromCoords(x, y);
     if (cellPos) {
-      this.handleCellLeftClick(cellPos.row, cellPos.col);
+      // If in targeting mode, handle target selection
+      if (this.targetingMode) {
+        const cell = this.grid.getCell(cellPos.row, cellPos.col);
+        this.onTargetSelected(cell);
+      } else {
+        this.handleCellLeftClick(cellPos.row, cellPos.col);
+      }
     }
   }
 
@@ -186,6 +218,25 @@ class Game {
     this.stats.minesRemaining = mineCount;
     this.stats.timeElapsed = 0;
     this.stats.startTime = 0;
+
+    // Reset card system
+    this.energy = CONFIG.player.startEnergy;
+    this.player.extraLives = CONFIG.player.startExtraLives;
+    this.player.gold = CONFIG.player.startGold;
+
+    // Reset deck and hand
+    const startingDeck = [
+      'scout', 'scout', 'scout',
+      'mine_detector', 'mine_detector',
+      'shield', 'shield',
+      'extra_life',
+      'energy_restore', 'energy_restore'
+    ];
+    this.deck.initialize(startingDeck);
+    this.hand.clear();
+
+    // Draw initial hand
+    this.drawCards(CONFIG.player.cardsPerTurn);
 
     this.updateHUD();
     this.resizeCanvas(); // Resize canvas for new grid
@@ -333,11 +384,192 @@ class Game {
     return this.stateManager.getCurrentState();
   }
 
+  // ========================================
+  // CARD SYSTEM METHODS
+  // ========================================
+
+  /**
+   * Initialize the card system
+   */
+  initializeCardSystem() {
+    // Create starting deck with basic cards
+    const startingDeck = [
+      'scout', 'scout', 'scout',
+      'mine_detector', 'mine_detector',
+      'shield', 'shield',
+      'extra_life',
+      'energy_restore', 'energy_restore'
+    ];
+
+    this.deck = new Deck(startingDeck);
+    this.hand = new Hand(CONFIG.cards.maxHandSize);
+
+    // Initialize CardUI
+    const handContainer = document.getElementById('hand-cards');
+    this.cardUI = new CardUI(handContainer, this);
+
+    // Draw initial hand
+    this.drawCards(CONFIG.player.cardsPerTurn);
+
+    // Emit initial energy event
+    EventBus.emit('energyChanged', {
+      current: this.energy,
+      max: this.maxEnergy
+    });
+  }
+
+  /**
+   * Draw cards from deck
+   * @param {number} count - Number of cards to draw
+   */
+  drawCards(count) {
+    for (let i = 0; i < count; i++) {
+      if (this.hand.isFull()) break;
+
+      const card = this.deck.drawCard();
+      if (card) {
+        this.hand.addCard(card);
+        EventBus.emit('cardDrawn', { card });
+      }
+    }
+
+    EventBus.emit('handUpdated', { cards: this.hand.getAllCards() });
+    this.cardUI.render();
+  }
+
+  /**
+   * Handle card selection
+   * @param {Card} card - Selected card
+   */
+  onCardSelected(card) {
+    if (!this.hand.canPlayCard(card, this.energy)) {
+      return;
+    }
+
+    this.selectedCard = card;
+    this.targetingMode = true;
+
+    if (card.targetType === 'none') {
+      // Card doesn't need a target, play immediately
+      this.playCard(card, null);
+    } else {
+      // Enter targeting mode
+      this.stateManager.pushState(CONFIG.gameState.CARD_SELECTION);
+      EventBus.emit('targetingModeStarted', { card });
+      this.cardUI.showTargetingMode(card);
+    }
+  }
+
+  /**
+   * Handle target selection
+   * @param {Object} cell - Target cell
+   */
+  onTargetSelected(cell) {
+    if (!this.targetingMode || !this.selectedCard) return;
+
+    this.playCard(this.selectedCard, cell);
+  }
+
+  /**
+   * Play a card
+   * @param {Card} card - Card to play
+   * @param {Object|null} target - Target object
+   */
+  playCard(card, target) {
+    // Prepare game state for effect execution
+    const gameState = {
+      grid: this.grid,
+      energy: this.energy,
+      maxEnergy: this.maxEnergy,
+      player: this.player
+    };
+
+    // Execute card effect
+    const result = card.play(target, gameState);
+
+    if (result.success) {
+      // Handle energy restore
+      if (result.data && result.data.newEnergy !== undefined) {
+        this.energy = result.data.newEnergy;
+      }
+
+      // Remove card from hand and add to discard
+      this.hand.removeCard(card.instanceId);
+      this.deck.discardCard(card);
+
+      // Exit targeting mode
+      if (this.targetingMode) {
+        this.exitTargetingMode();
+      }
+
+      // Emit card played event
+      EventBus.emit('cardPlayed', {
+        card: card,
+        target: target,
+        result: result
+      });
+
+      // Update UI
+      this.cardUI.render();
+    } else {
+      // Show error message
+      console.warn('Card play failed:', result.reason);
+      this.exitTargetingMode();
+    }
+  }
+
+  /**
+   * Exit targeting mode
+   */
+  exitTargetingMode() {
+    this.targetingMode = false;
+    this.selectedCard = null;
+
+    if (this.stateManager.getCurrentState() === CONFIG.gameState.CARD_SELECTION) {
+      this.stateManager.popState();
+    }
+
+    EventBus.emit('targetingModeEnded', {});
+    this.cardUI.hideTargetingMode();
+  }
+
+  /**
+   * Handle card played event
+   * @param {Object} data - Event data
+   */
+  onCardPlayed(data) {
+    // Energy is already handled in playCard()
+    // Additional effects can be added here
+  }
+
+  /**
+   * Handle energy changed event
+   * @param {Object} data - Event data
+   */
+  onEnergyChanged(data) {
+    // Update internal energy state
+    if (data.current !== undefined) {
+      this.energy = data.current;
+    }
+    if (data.max !== undefined) {
+      this.maxEnergy = data.max;
+    }
+
+    // Update UI
+    this.cardUI.updateEnergyIndicator(this.energy, this.maxEnergy);
+  }
+
   /**
    * Cleanup
    */
   destroy() {
     this.gameLoop.stop();
+
+    // Cleanup card system
+    if (this.cardUI) {
+      this.cardUI.destroy();
+    }
+
     EventBus.clear();
   }
 
@@ -381,14 +613,21 @@ class Game {
 
     const touchDuration = Date.now() - this.touchStartTime;
 
-    // If it was a short tap (not long press), treat as left click
+    // If it was a short tap (not long press), handle click
     if (touchDuration < this.longPressDelay && this.touchPosition) {
       const cellPos = this.gridRenderer.getCellFromCoords(
         this.touchPosition.x,
         this.touchPosition.y
       );
+
       if (cellPos) {
-        this.handleCellLeftClick(cellPos.row, cellPos.col);
+        // If in targeting mode, handle target selection
+        if (this.targetingMode) {
+          const cell = this.grid.getCell(cellPos.row, cellPos.col);
+          this.onTargetSelected(cell);
+        } else {
+          this.handleCellLeftClick(cellPos.row, cellPos.col);
+        }
       }
     }
 

@@ -26,6 +26,30 @@
         <div id="canvas-container">
             <canvas id="game-canvas"></canvas>
         </div>
+
+        <!-- Hand Container -->
+        <div id="hand-container">
+            <!-- Energy Bar -->
+            <div id="energy-bar">
+                <div class="energy-label">能量</div>
+                <div class="energy-display">
+                    <span id="energy-current">3/3</span>
+                </div>
+                <div id="energy-orbs" class="energy-orbs">
+                    <div class="energy-orb active"></div>
+                    <div class="energy-orb active"></div>
+                    <div class="energy-orb active"></div>
+                </div>
+            </div>
+
+            <!-- Hand Cards -->
+            <div id="hand-cards" class="hand-cards">
+                <!-- Cards will be dynamically inserted here -->
+            </div>
+
+            <!-- Targeting Message -->
+            <div id="targeting-message" style="display: none;"></div>
+        </div>
     </div>
 
     <!-- Menu -->
