@@ -442,18 +442,25 @@ class Game {
    * @param {Card} card - Selected card
    */
   onCardSelected(card) {
+    console.log('Card selected:', card.name, 'Energy:', this.energy, 'Card cost:', card.energyCost);
+
     if (!this.hand.canPlayCard(card, this.energy)) {
+      console.warn('Cannot play card: not enough energy');
       return;
     }
 
     this.selectedCard = card;
     this.targetingMode = true;
 
+    console.log('Card targetType:', card.targetType);
+
     if (card.targetType === 'none') {
       // Card doesn't need a target, play immediately
+      console.log('Playing card immediately (no target needed)');
       this.playCard(card, null);
     } else {
       // Enter targeting mode
+      console.log('Entering targeting mode');
       this.stateManager.pushState(CONFIG.gameState.CARD_SELECTION);
       EventBus.emit('targetingModeStarted', { card });
       this.cardUI.showTargetingMode(card);
@@ -476,6 +483,8 @@ class Game {
    * @param {Object|null} target - Target object
    */
   playCard(card, target) {
+    console.log('Playing card:', card.name, 'on target:', target);
+
     // Prepare game state for effect execution
     const gameState = {
       grid: this.grid,
@@ -484,23 +493,31 @@ class Game {
       player: this.player
     };
 
+    console.log('Game state:', gameState);
+
     // Execute card effect
     const result = card.play(target, gameState);
 
+    console.log('Card play result:', result);
+
     if (result.success) {
-      // Handle energy restore
+      // Deduct energy cost
+      this.energy -= card.energyCost;
+
+      // Handle energy restore if the card effect returns new energy
       if (result.data && result.data.newEnergy !== undefined) {
         this.energy = result.data.newEnergy;
       }
 
+      // Emit energy changed event
+      EventBus.emit('energyChanged', {
+        current: this.energy,
+        max: this.maxEnergy
+      });
+
       // Remove card from hand and add to discard
       this.hand.removeCard(card.instanceId);
       this.deck.discardCard(card);
-
-      // Exit targeting mode
-      if (this.targetingMode) {
-        this.exitTargetingMode();
-      }
 
       // Emit card played event
       EventBus.emit('cardPlayed', {
@@ -513,7 +530,12 @@ class Game {
       this.cardUI.render();
     } else {
       // Show error message
-      console.warn('Card play failed:', result.reason);
+      console.error('Card play failed:', result.reason);
+      alert(`卡牌使用失败: ${result.reason || '未知错误'}`);
+    }
+
+    // Always exit targeting mode
+    if (this.targetingMode) {
       this.exitTargetingMode();
     }
   }

@@ -160,6 +160,17 @@ class Grid {
   }
 
   /**
+   * Reveal an empty area (flood fill from a starting cell)
+   * This is similar to revealAdjacentCells but provides a cleaner API for card effects
+   * @param {number} row - Row index
+   * @param {number} col - Column index
+   */
+  revealEmptyArea(row, col) {
+    // Simply call revealCell which will automatically flood fill if the cell has no adjacent mines
+    this.revealCell(row, col);
+  }
+
+  /**
    * Get all neighboring cells
    * @param {number} row - Row index
    * @param {number} col - Column index

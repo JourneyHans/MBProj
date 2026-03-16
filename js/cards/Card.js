@@ -70,7 +70,10 @@ class Card {
    * @returns {Object} Result object with success and data
    */
   play(target, gameState) {
+    console.log(`[Card] Playing ${this.id} on target:`, target);
+
     if (!this.effect || typeof this.effect !== 'function') {
+      console.error(`[Card] Effect not defined for ${this.id}`);
       return {
         success: false,
         reason: 'Card effect not defined'
@@ -79,12 +82,14 @@ class Card {
 
     try {
       const result = this.effect(target, gameState);
+      console.log(`[Card] Effect result:`, result);
       return result;
     } catch (error) {
-      console.error(`Error executing card effect for ${this.id}:`, error);
+      console.error(`[Card] Error executing card effect for ${this.id}:`, error);
+      console.error('[Card] Error stack:', error.stack);
       return {
         success: false,
-        reason: 'Effect execution failed'
+        reason: `Effect execution failed: ${error.message}`
       };
     }
   }
