@@ -1,63 +1,63 @@
-# Release Notes
+# 发布说明
 
 ## [v0.1.0-alpha] - 2026-03-13
 
-### 🎮 Features
-- **Core Gameplay**: Complete minesweeper implementation
-  - Left-click to reveal cells
-  - Right-click to flag mines
-  - First-click safety (mines generated after first click)
-  - Auto-reveal empty cells (flood fill)
-  - Win/lose conditions
+### 🎮 功能特性
+- **核心玩法**: 完整的扫雷实现
+  - 左键点击揭开方块
+  - 右键点击标记地雷
+  - 首次点击保护（第一次点击后生成地雷）
+  - 自动揭开空白方块（泛洪填充）
+  - 胜利/失败判定
 
-- **Rendering**: Canvas-based grid rendering
-  - Color-coded numbers (1-8)
-  - Visual feedback for different cell states
-  - Smooth 60 FPS rendering
+- **渲染**: 基于Canvas的网格渲染
+  - 彩色数字（1-8）
+  - 不同方块状态的视觉反馈
+  - 流畅的60 FPS渲染
 
-- **UI/UX**:
-  - Main menu
-  - HUD (mine counter, timer)
-  - Victory/Game over dialogs
-  - Clean, dark theme interface
+- **用户界面**:
+  - 主菜单
+  - 抬头显示器（地雷计数器、计时器）
+  - 胜利/游戏结束对话框
+  - 简洁的深色主题界面
 
-### 🏗️ Technical
-- ES6 modules with modern JavaScript
-- Event-driven architecture (EventBus)
-- State management system
-- Game loop with requestAnimationFrame
-- Modular, maintainable code structure
+### 🏗️ 技术架构
+- 使用现代JavaScript的ES6模块
+- 事件驱动架构（EventBus）
+- 状态管理系统
+- 基于requestAnimationFrame的游戏循环
+- 模块化、可维护的代码结构
 
-### 🐛 Known Issues
-- No card system yet (planned for v0.2.0)
-- No roguelike elements (planned for v0.3.0)
-- Basic visuals without assets
-- No sound effects
-- No mobile touch optimization
+### 🐛 已知问题
+- 尚未实现卡牌系统（计划于v0.2.0）
+- 尚未实现Roguelike元素（计划于v0.3.0）
+- 基础视觉效果，无美术资源
+- 无音效
+- 未针对移动端触摸操作优化
 
-### 🔧 Browser Support
-- Chrome/Edge: ✅ Fully tested
-- Firefox: ✅ Fully tested
-- Safari: ⚠️ Basic testing
-- Mobile browsers: ⚠️ Limited support
+### 🔧 浏览器支持
+- Chrome/Edge: ✅ 完整测试
+- Firefox: ✅ 完整测试
+- Safari: ⚠️ 基础测试
+- 移动浏览器: ⚠️ 有限支持
 
-### 📊 Performance
-- First Load: ~1.5s
-- Runtime FPS: 60
-- Bundle Size: ~15KB (uncompressed)
+### 📊 性能指标
+- 首次加载: ~1.5秒
+- 运行时帧率: 60 FPS
+- 打包大小: ~15KB（未压缩）
 
-### 🎯 Next Release (v0.2.0-alpha)
-- Card system implementation
-- Deck building mechanics
-- Basic card effects
-- Energy system
+### 🎯 下一版本 (v0.2.0-alpha)
+- 卡牌系统实现
+- 卡组构建机制
+- 基础卡牌效果
+- 能量系统
 
 ---
 
-## Version History
+## 版本历史
 
-### Upcoming
-- v0.2.0-alpha - Card System Foundation
-- v0.3.0-alpha - Roguelike Core
-- v0.4.0-beta - Content Polish
-- v1.0.0 - Official Release
+### 即将推出
+- v0.2.0-alpha - 卡牌系统基础
+- v0.3.0-alpha - Roguelike核心
+- v0.4.0-beta - 内容打磨
+- v1.0.0 - 正式发布

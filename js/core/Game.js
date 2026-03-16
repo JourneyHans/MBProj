@@ -24,6 +24,16 @@ class Game {
     this.canvas = null;
     this.ctx = null;
 
+    // Touch handling
+    this.touchStartTime = 0;
+    this.touchTimer = null;
+    this.touchPosition = null;
+    this.longPressDelay = 500; // 500ms for long press
+
+    // Responsive canvas
+    this.canvasScale = 1;
+    this.baseCanvasSize = { width: 0, height: 0 };
+
     // Game state
     this.stats = {
       minesRemaining: 0,
@@ -49,6 +59,9 @@ class Game {
     // Setup input handlers
     this.setupInputHandlers();
 
+    // Setup responsive canvas
+    this.resizeCanvas();
+
     // Start game loop
     this.gameLoop.start();
 
@@ -70,8 +83,18 @@ class Game {
    * Setup input handlers
    */
   setupInputHandlers() {
+    // Mouse events
     this.canvas.addEventListener('click', (e) => this.handleClick(e));
     this.canvas.addEventListener('contextmenu', (e) => this.handleRightClick(e));
+
+    // Touch events
+    this.canvas.addEventListener('touchstart', (e) => this.handleTouchStart(e), { passive: false });
+    this.canvas.addEventListener('touchend', (e) => this.handleTouchEnd(e), { passive: false });
+    this.canvas.addEventListener('touchmove', (e) => this.handleTouchMove(e), { passive: false });
+    this.canvas.addEventListener('touchcancel', (e) => this.handleTouchCancel(e), { passive: false });
+
+    // Window resize for responsive canvas
+    window.addEventListener('resize', () => this.handleResize());
   }
 
   /**
@@ -82,8 +105,10 @@ class Game {
     if (!this.stateManager.canInteract()) return;
 
     const rect = this.canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+
+    // Convert screen coordinates to canvas coordinates, accounting for CSS scaling
+    const x = (e.clientX - rect.left) * (this.canvas.width / rect.width);
+    const y = (e.clientY - rect.top) * (this.canvas.height / rect.height);
 
     const cellPos = this.gridRenderer.getCellFromCoords(x, y);
     if (cellPos) {
@@ -101,8 +126,10 @@ class Game {
     if (!this.stateManager.canInteract()) return;
 
     const rect = this.canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+
+    // Convert screen coordinates to canvas coordinates, accounting for CSS scaling
+    const x = (e.clientX - rect.left) * (this.canvas.width / rect.width);
+    const y = (e.clientY - rect.top) * (this.canvas.height / rect.height);
 
     const cellPos = this.gridRenderer.getCellFromCoords(x, y);
     if (cellPos) {
@@ -161,6 +188,7 @@ class Game {
     this.stats.startTime = 0;
 
     this.updateHUD();
+    this.resizeCanvas(); // Resize canvas for new grid
     this.stateManager.transition(CONFIG.gameState.PLAYING);
   }
 
@@ -311,6 +339,167 @@ class Game {
   destroy() {
     this.gameLoop.stop();
     EventBus.clear();
+  }
+
+  /**
+   * Handle touch start
+   * @param {TouchEvent} e - Touch event
+   */
+  handleTouchStart(e) {
+    e.preventDefault();
+
+    if (!this.stateManager.canInteract()) return;
+
+    const touch = e.touches[0];
+    const rect = this.canvas.getBoundingClientRect();
+
+    // Convert screen coordinates to canvas coordinates, accounting for CSS scaling
+    const x = (touch.clientX - rect.left) * (this.canvas.width / rect.width);
+    const y = (touch.clientY - rect.top) * (this.canvas.height / rect.height);
+
+    this.touchPosition = { x, y };
+    this.touchStartTime = Date.now();
+
+    // Set up long press detection
+    this.touchTimer = setTimeout(() => {
+      this.performLongPress(x, y);
+    }, this.longPressDelay);
+  }
+
+  /**
+   * Handle touch end
+   * @param {TouchEvent} e - Touch event
+   */
+  handleTouchEnd(e) {
+    e.preventDefault();
+
+    // Clear long press timer
+    if (this.touchTimer) {
+      clearTimeout(this.touchTimer);
+      this.touchTimer = null;
+    }
+
+    const touchDuration = Date.now() - this.touchStartTime;
+
+    // If it was a short tap (not long press), treat as left click
+    if (touchDuration < this.longPressDelay && this.touchPosition) {
+      const cellPos = this.gridRenderer.getCellFromCoords(
+        this.touchPosition.x,
+        this.touchPosition.y
+      );
+      if (cellPos) {
+        this.handleCellLeftClick(cellPos.row, cellPos.col);
+      }
+    }
+
+    this.touchPosition = null;
+  }
+
+  /**
+   * Handle touch move
+   * @param {TouchEvent} e - Touch event
+   */
+  handleTouchMove(e) {
+    e.preventDefault();
+
+    // Cancel long press if finger moved too much
+    if (this.touchTimer && this.touchPosition) {
+      const touch = e.touches[0];
+      const rect = this.canvas.getBoundingClientRect();
+      const x = touch.clientX - rect.left;
+      const y = touch.clientY - rect.top;
+
+      const distance = Math.sqrt(
+        Math.pow(x - this.touchPosition.x, 2) +
+        Math.pow(y - this.touchPosition.y, 2)
+      );
+
+      // If moved more than 10px, cancel long press
+      if (distance > 10) {
+        clearTimeout(this.touchTimer);
+        this.touchTimer = null;
+      }
+    }
+  }
+
+  /**
+   * Handle touch cancel
+   * @param {TouchEvent} e - Touch event
+   */
+  handleTouchCancel(e) {
+    e.preventDefault();
+
+    // Clear long press timer
+    if (this.touchTimer) {
+      clearTimeout(this.touchTimer);
+      this.touchTimer = null;
+    }
+
+    this.touchPosition = null;
+  }
+
+  /**
+   * Perform long press action (right click equivalent)
+   * @param {number} x - X coordinate
+   * @param {number} y - Y coordinate
+   */
+  performLongPress(x, y) {
+    // Provide haptic feedback if available
+    if (navigator.vibrate) {
+      navigator.vibrate(50);
+    }
+
+    const cellPos = this.gridRenderer.getCellFromCoords(x, y);
+    if (cellPos) {
+      this.handleCellRightClick(cellPos.row, cellPos.col);
+    }
+
+    this.touchTimer = null;
+  }
+
+  /**
+   * Handle window resize - make canvas responsive
+   */
+  handleResize() {
+    if (!this.canvas || !this.gridRenderer) return;
+
+    this.resizeCanvas();
+  }
+
+  /**
+   * Resize canvas to fit container
+   */
+  resizeCanvas() {
+    if (!this.canvas || !this.gridRenderer) return;
+
+    const container = document.getElementById('canvas-container');
+    if (!container) return;
+
+    // Get container dimensions
+    const containerWidth = container.clientWidth - 40; // Account for padding
+    const containerHeight = container.clientHeight - 40;
+
+    // Get grid dimensions from renderer
+    const gridWidth = this.gridRenderer.canvas.width;
+    const gridHeight = this.gridRenderer.canvas.height;
+
+    // Calculate scale to fit container while maintaining aspect ratio
+    const scaleX = containerWidth / gridWidth;
+    const scaleY = containerHeight / gridHeight;
+    this.canvasScale = Math.min(scaleX, scaleY, 1); // Don't scale up, only down
+
+    // Apply scale
+    if (this.canvasScale < 1) {
+      const newWidth = gridWidth * this.canvasScale;
+      const newHeight = gridHeight * this.canvasScale;
+
+      this.canvas.style.width = `${newWidth}px`;
+      this.canvas.style.height = `${newHeight}px`;
+    } else {
+      // Reset to natural size
+      this.canvas.style.width = '';
+      this.canvas.style.height = '';
+    }
   }
 }
 
