@@ -128,14 +128,7 @@ class Game {
    * @param {MouseEvent} e - Mouse event
    */
   handleClick(e) {
-    console.log('========== Canvas clicked ==========');
-    console.log('Targeting mode:', this.targetingMode);
-    console.log('Can interact:', this.stateManager.canInteract());
-
-    if (!this.stateManager.canInteract()) {
-      console.log('Cannot interact - ignoring click');
-      return;
-    }
+    if (!this.stateManager.canInteract()) return;
 
     const rect = this.canvas.getBoundingClientRect();
 
@@ -143,24 +136,15 @@ class Game {
     const x = (e.clientX - rect.left) * (this.canvas.width / rect.width);
     const y = (e.clientY - rect.top) * (this.canvas.height / rect.height);
 
-    console.log('Canvas coordinates:', { x, y });
-
     const cellPos = this.gridRenderer.getCellFromCoords(x, y);
     if (cellPos) {
-      console.log('Cell position:', cellPos);
-
       // If in targeting mode, handle target selection
       if (this.targetingMode) {
-        console.log('In targeting mode - calling onTargetSelected');
         const cell = this.grid.getCell(cellPos.row, cellPos.col);
-        console.log('Cell:', cell);
         this.onTargetSelected(cell);
       } else {
-        console.log('Normal mode - calling handleCellLeftClick');
         this.handleCellLeftClick(cellPos.row, cellPos.col);
       }
-    } else {
-      console.log('No cell found at click position');
     }
   }
 
@@ -466,7 +450,6 @@ class Game {
 
     if (!this.hand.canPlayCard(card, this.energy)) {
       console.warn('Cannot play card: not enough energy');
-      alert('无法使用卡牌：能量不足！');
       return;
     }
 
@@ -480,12 +463,10 @@ class Game {
     if (card.targetType === 'none') {
       // Card doesn't need a target, play immediately
       console.log('Playing card immediately (no target needed)');
-      alert(`立即打出卡牌：${card.name}`);
       this.playCard(card, null);
     } else {
       // Enter targeting mode
       console.log('Entering targeting mode');
-      alert(`请选择目标格子！\n卡牌：${card.name}`);
       this.stateManager.pushState(CONFIG.gameState.CARD_SELECTION);
       EventBus.emit('targetingModeStarted', { card });
       this.cardUI.showTargetingMode(card);
@@ -497,17 +478,10 @@ class Game {
    * @param {Object} cell - Target cell
    */
   onTargetSelected(cell) {
-    console.log('========== Target selected ==========');
-    console.log('Targeting mode:', this.targetingMode);
-    console.log('Selected card:', this.selectedCard ? this.selectedCard.name : 'none');
-    console.log('Target cell:', cell);
-
     if (!this.targetingMode || !this.selectedCard) {
-      console.error('Not in targeting mode or no card selected!');
       return;
     }
 
-    console.log('Calling playCard...');
     this.playCard(this.selectedCard, cell);
   }
 

@@ -58,7 +58,8 @@ class StateManager {
    * @returns {boolean} True if interaction is allowed
    */
   canInteract() {
-    return this.currentState === CONFIG.gameState.PLAYING;
+    return this.currentState === CONFIG.gameState.PLAYING ||
+           this.currentState === CONFIG.gameState.CARD_SELECTION;
   }
 
   /**

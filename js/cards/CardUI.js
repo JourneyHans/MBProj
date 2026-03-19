@@ -152,36 +152,23 @@ class CardUI {
    * @param {Card} card - Clicked card
    */
   onCardClick(card) {
-    console.log('[CardUI] Card clicked:', card.name, 'Targeting mode:', this.targetingMode);
-
     // If already in targeting mode, ignore
     if (this.targetingMode) {
-      console.warn('[CardUI] Already in targeting mode, ignoring click');
       return;
     }
 
     // Check if card is playable
-    const canPlay = this.game.hand.canPlayCard(card, this.game.energy);
-    console.log('[CardUI] Can play card:', canPlay, 'Card energy:', card.energyCost, 'Current energy:', this.game.energy);
-
-    if (!canPlay) {
-      console.warn('[CardUI] Cannot play card - not enough energy or other reason');
+    if (!this.game.hand.canPlayCard(card, this.game.energy)) {
       this.showNotEnoughEnergy();
       return;
     }
 
     // Select the card
-    console.log('[CardUI] Selecting card:', card.name);
     this.game.hand.selectCard(card.instanceId);
 
     // Notify game to start targeting mode
-    console.log('[CardUI] Calling game.onCardSelected, method exists:', typeof this.game.onCardSelected);
-
     if (this.game.onCardSelected && typeof this.game.onCardSelected === 'function') {
-      console.log('[CardUI] Calling game.onCardSelected');
       this.game.onCardSelected(card);
-    } else {
-      console.error('[CardUI] game.onCardSelected is not a function!', this.game.onCardSelected);
     }
   }
 
