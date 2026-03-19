@@ -128,7 +128,14 @@ class Game {
    * @param {MouseEvent} e - Mouse event
    */
   handleClick(e) {
-    if (!this.stateManager.canInteract()) return;
+    console.log('========== Canvas clicked ==========');
+    console.log('Targeting mode:', this.targetingMode);
+    console.log('Can interact:', this.stateManager.canInteract());
+
+    if (!this.stateManager.canInteract()) {
+      console.log('Cannot interact - ignoring click');
+      return;
+    }
 
     const rect = this.canvas.getBoundingClientRect();
 
@@ -136,15 +143,24 @@ class Game {
     const x = (e.clientX - rect.left) * (this.canvas.width / rect.width);
     const y = (e.clientY - rect.top) * (this.canvas.height / rect.height);
 
+    console.log('Canvas coordinates:', { x, y });
+
     const cellPos = this.gridRenderer.getCellFromCoords(x, y);
     if (cellPos) {
+      console.log('Cell position:', cellPos);
+
       // If in targeting mode, handle target selection
       if (this.targetingMode) {
+        console.log('In targeting mode - calling onTargetSelected');
         const cell = this.grid.getCell(cellPos.row, cellPos.col);
+        console.log('Cell:', cell);
         this.onTargetSelected(cell);
       } else {
+        console.log('Normal mode - calling handleCellLeftClick');
         this.handleCellLeftClick(cellPos.row, cellPos.col);
       }
+    } else {
+      console.log('No cell found at click position');
     }
   }
 
@@ -442,25 +458,34 @@ class Game {
    * @param {Card} card - Selected card
    */
   onCardSelected(card) {
-    console.log('Card selected:', card.name, 'Energy:', this.energy, 'Card cost:', card.energyCost);
+    console.log('========== Card selected ==========');
+    console.log('Card name:', card.name);
+    console.log('Card energy cost:', card.energyCost);
+    console.log('Current energy:', this.energy);
+    console.log('Card targetType:', card.targetType);
 
     if (!this.hand.canPlayCard(card, this.energy)) {
       console.warn('Cannot play card: not enough energy');
+      alert('无法使用卡牌：能量不足！');
       return;
     }
 
     this.selectedCard = card;
     this.targetingMode = true;
 
-    console.log('Card targetType:', card.targetType);
+    console.log('Set selectedCard and targetingMode');
+    console.log('selectedCard:', this.selectedCard);
+    console.log('targetingMode:', this.targetingMode);
 
     if (card.targetType === 'none') {
       // Card doesn't need a target, play immediately
       console.log('Playing card immediately (no target needed)');
+      alert(`立即打出卡牌：${card.name}`);
       this.playCard(card, null);
     } else {
       // Enter targeting mode
       console.log('Entering targeting mode');
+      alert(`请选择目标格子！\n卡牌：${card.name}`);
       this.stateManager.pushState(CONFIG.gameState.CARD_SELECTION);
       EventBus.emit('targetingModeStarted', { card });
       this.cardUI.showTargetingMode(card);
@@ -472,8 +497,17 @@ class Game {
    * @param {Object} cell - Target cell
    */
   onTargetSelected(cell) {
-    if (!this.targetingMode || !this.selectedCard) return;
+    console.log('========== Target selected ==========');
+    console.log('Targeting mode:', this.targetingMode);
+    console.log('Selected card:', this.selectedCard ? this.selectedCard.name : 'none');
+    console.log('Target cell:', cell);
 
+    if (!this.targetingMode || !this.selectedCard) {
+      console.error('Not in targeting mode or no card selected!');
+      return;
+    }
+
+    console.log('Calling playCard...');
     this.playCard(this.selectedCard, cell);
   }
 
