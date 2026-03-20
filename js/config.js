@@ -39,6 +39,11 @@ const CONFIG = {
     goldMultiplier: 1.0
   },
 
+  // Debug settings
+  debug: {
+    enabled: false
+  },
+
   // Card settings
   cards: {
     maxDeckSize: 30,

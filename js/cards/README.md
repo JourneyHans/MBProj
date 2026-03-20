@@ -47,4 +47,5 @@
 
 - 目标选择状态必须与 `StateManager` 保持一致
 - 无目标卡采用“二次确认”，防止误触
+- 卡牌提示文案统一显示在 `#targeting-message`（目标选择、二次确认、能量不足）
 - 效果返回的视觉数据（如 `highlightedCells`）由 `Game` 统一调度清理

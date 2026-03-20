@@ -4,7 +4,12 @@
  */
 
 import EventBus from '../core/EventBus.js';
-import CONFIG from '../config.js';
+
+const UI_MESSAGES = {
+  selectTarget: '请选择目标格子',
+  confirmNoTarget: '再次点击该卡以确认使用',
+  notEnoughEnergy: (required, current) => `能量不足（需要 ${required}，当前 ${current}）`
+};
 
 class CardUI {
   /**
@@ -161,19 +166,15 @@ class CardUI {
    * @param {Card} card - Clicked card
    */
   onCardClick(card) {
-    console.log('[CardUI] Card clicked:', card.name, 'Current targeting mode:', this.targetingMode);
-
     // Check if card is playable
     const canPlay = this.game.hand.canPlayCard(card, this.game.energy);
-    console.log('[CardUI] Can play card:', canPlay);
 
     if (!canPlay) {
-      this.showNotEnoughEnergy();
+      this.showNotEnoughEnergy(card);
       return;
     }
 
     // Select the card
-    console.log('[CardUI] Selecting card / switching targeting card');
     this.game.hand.selectCard(card.instanceId);
 
     // Notify game to start targeting mode
@@ -238,11 +239,7 @@ class CardUI {
     }
 
     // Show targeting message
-    const messageEl = document.getElementById('targeting-message');
-    if (messageEl) {
-      messageEl.textContent = '选择目标格子...';
-      messageEl.style.display = 'block';
-    }
+    this.showMessage(`${UI_MESSAGES.selectTarget}: ${card.name}`);
 
     // Change cursor
     if (this.game.canvas) {
@@ -263,10 +260,7 @@ class CardUI {
     }
 
     // Hide targeting message
-    const messageEl = document.getElementById('targeting-message');
-    if (messageEl) {
-      messageEl.style.display = 'none';
-    }
+    this.hideMessage();
 
     // Reset cursor
     if (this.game.canvas) {
@@ -286,12 +280,7 @@ class CardUI {
     this.confirmationCardId = card.instanceId;
     this.highlightCard(card.instanceId);
 
-    const messageEl = document.getElementById('targeting-message');
-    if (messageEl) {
-      messageEl.textContent = '再次点击该卡以确认使用';
-      messageEl.style.display = 'block';
-      messageEl.classList.remove('error');
-    }
+    this.showMessage(`${UI_MESSAGES.confirmNoTarget}: ${card.name}`);
 
     this.render();
     this.highlightCard(card.instanceId);
@@ -304,11 +293,7 @@ class CardUI {
     if (!this.confirmationCardId) return;
     this.confirmationCardId = null;
 
-    const messageEl = document.getElementById('targeting-message');
-    if (messageEl) {
-      messageEl.style.display = 'none';
-      messageEl.classList.remove('error');
-    }
+    this.hideMessage();
 
     this.render();
   }
@@ -352,18 +337,41 @@ class CardUI {
   /**
    * Show "not enough energy" message
    */
-  showNotEnoughEnergy() {
-    const messageEl = document.getElementById('targeting-message');
-    if (messageEl) {
-      messageEl.textContent = '能量不足！';
-      messageEl.style.display = 'block';
-      messageEl.classList.add('error');
+  showNotEnoughEnergy(card) {
+    const required = card ? card.energyCost : 0;
+    const current = this.game ? this.game.energy : 0;
+    this.showMessage(UI_MESSAGES.notEnoughEnergy(required, current), 'error', 1500);
+  }
 
+  /**
+   * Show card related message in hand area
+   * @param {string} text - Message text
+   * @param {string} type - normal|error
+   * @param {number|null} duration - Auto hide duration
+   */
+  showMessage(text, type = 'normal', duration = null) {
+    const messageEl = document.getElementById('targeting-message');
+    if (!messageEl) return;
+
+    messageEl.textContent = text;
+    messageEl.style.display = 'block';
+    messageEl.classList.toggle('error', type === 'error');
+
+    if (duration) {
       setTimeout(() => {
-        messageEl.style.display = 'none';
-        messageEl.classList.remove('error');
-      }, 1500);
+        this.hideMessage();
+      }, duration);
     }
+  }
+
+  /**
+   * Hide card related message in hand area
+   */
+  hideMessage() {
+    const messageEl = document.getElementById('targeting-message');
+    if (!messageEl) return;
+    messageEl.style.display = 'none';
+    messageEl.classList.remove('error');
   }
 
   /**

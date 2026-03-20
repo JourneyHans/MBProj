@@ -13,6 +13,8 @@ class GridRenderer {
     this.grid = null;
     this.dirtyCells = new Set();
     this.needsFullRedraw = true;
+    this.targetPreviewCell = null;
+    this.targetPreviewValid = true;
   }
 
   /**
@@ -66,6 +68,8 @@ class GridRenderer {
     } else {
       this.renderDirty();
     }
+
+    this.drawTargetPreview();
   }
 
   /**
@@ -279,6 +283,51 @@ class GridRenderer {
       this.ctx.lineWidth = 3;
       this.ctx.strokeRect(x, y, this.cellSize, this.cellSize);
     }
+  }
+
+  /**
+   * Set targeting preview cell
+   * @param {Cell|null} cell - Preview target cell
+   * @param {boolean} isValid - Whether current target is valid
+   */
+  setTargetPreview(cell, isValid = true) {
+    this.targetPreviewCell = cell;
+    this.targetPreviewValid = isValid;
+  }
+
+  /**
+   * Clear targeting preview
+   */
+  clearTargetPreview() {
+    this.targetPreviewCell = null;
+    this.targetPreviewValid = true;
+  }
+
+  /**
+   * Draw targeting preview overlay after base cell rendering
+   */
+  drawTargetPreview() {
+    if (!this.targetPreviewCell) return;
+
+    const cell = this.targetPreviewCell;
+    this.renderCell(cell);
+
+    const x = this.cellGap + cell.col * (this.cellSize + this.cellGap);
+    const y = this.cellGap + cell.row * (this.cellSize + this.cellGap);
+
+    const pulse = 0.55 + 0.45 * Math.abs(Math.sin(Date.now() / 200));
+    const strokeColor = this.targetPreviewValid
+      ? `rgba(34, 197, 94, ${pulse.toFixed(3)})`
+      : `rgba(239, 68, 68, ${pulse.toFixed(3)})`;
+    const fillColor = this.targetPreviewValid
+      ? 'rgba(34, 197, 94, 0.12)'
+      : 'rgba(239, 68, 68, 0.16)';
+
+    this.ctx.fillStyle = fillColor;
+    this.ctx.fillRect(x, y, this.cellSize, this.cellSize);
+    this.ctx.strokeStyle = strokeColor;
+    this.ctx.lineWidth = 3;
+    this.ctx.strokeRect(x + 1, y + 1, this.cellSize - 2, this.cellSize - 2);
   }
 
   /**

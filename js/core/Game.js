@@ -53,6 +53,8 @@ class Game {
     this.selectedCard = null;
     this.targetingMode = false;
     this.pendingCardConfirmation = null;
+    this.previewTargetCell = null;
+    this.debugEnabled = Boolean(CONFIG.debug && CONFIG.debug.enabled);
 
     // Player state
     this.player = {
@@ -112,6 +114,8 @@ class Game {
   setupInputHandlers() {
     // Mouse events
     this.canvas.addEventListener('click', (e) => this.handleClick(e));
+    this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+    this.canvas.addEventListener('mouseleave', () => this.handleMouseLeave());
     this.canvas.addEventListener('contextmenu', (e) => this.handleRightClick(e));
 
     // Touch events
@@ -150,6 +154,34 @@ class Game {
         this.handleCellLeftClick(cellPos.row, cellPos.col);
       }
     }
+  }
+
+  /**
+   * Handle mouse move on canvas for targeting preview
+   * @param {MouseEvent} e - Mouse event
+   */
+  handleMouseMove(e) {
+    if (!this.targetingMode || !this.grid || !this.gridRenderer) return;
+
+    const rect = this.canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (this.canvas.width / rect.width);
+    const y = (e.clientY - rect.top) * (this.canvas.height / rect.height);
+
+    const cellPos = this.gridRenderer.getCellFromCoords(x, y);
+    if (!cellPos) {
+      this.clearTargetPreview();
+      return;
+    }
+
+    const cell = this.grid.getCell(cellPos.row, cellPos.col);
+    this.updateTargetPreview(cell);
+  }
+
+  /**
+   * Handle mouse leave on canvas
+   */
+  handleMouseLeave() {
+    this.clearTargetPreview();
   }
 
   /**
@@ -456,14 +488,14 @@ class Game {
    * @param {Card} card - Selected card
    */
   onCardSelected(card) {
-    console.log('========== Card selected ==========');
-    console.log('Card name:', card.name);
-    console.log('Card energy cost:', card.energyCost);
-    console.log('Current energy:', this.energy);
-    console.log('Card targetType:', card.targetType);
+    this.debug('========== Card selected ==========');
+    this.debug('Card name:', card.name);
+    this.debug('Card energy cost:', card.energyCost);
+    this.debug('Current energy:', this.energy);
+    this.debug('Card targetType:', card.targetType);
 
     if (!this.hand.canPlayCard(card, this.energy)) {
-      console.warn('Cannot play card: not enough energy');
+      this.showToast(`能量不足（需要 ${card.energyCost}，当前 ${this.energy}）`, 1500, 'error');
       return;
     }
 
@@ -475,7 +507,7 @@ class Game {
       }
 
       if (this.pendingCardConfirmation && this.pendingCardConfirmation.instanceId === card.instanceId) {
-        console.log('Card confirmation received, playing card');
+        this.debug('Card confirmation received, playing card');
         this.clearCardConfirmation();
         this.playCard(card, null);
         return;
@@ -493,17 +525,17 @@ class Game {
     this.selectedCard = card;
     this.targetingMode = true;
 
-    console.log('Set selectedCard and targetingMode');
-    console.log('selectedCard:', this.selectedCard);
-    console.log('targetingMode:', this.targetingMode);
+    this.debug('Set selectedCard and targetingMode');
+    this.debug('selectedCard:', this.selectedCard);
+    this.debug('targetingMode:', this.targetingMode);
 
     // Enter CARD_SELECTION only once; clicking another card while targeting
     // should only switch selected card instead of stacking duplicate states.
     if (!wasTargeting && this.stateManager.getCurrentState() !== CONFIG.gameState.CARD_SELECTION) {
-      console.log('Entering targeting mode');
+      this.debug('Entering targeting mode');
       this.stateManager.pushState(CONFIG.gameState.CARD_SELECTION);
     } else if (wasTargeting) {
-      console.log('Switching targeting card without state transition');
+      this.debug('Switching targeting card without state transition');
     }
 
     EventBus.emit('targetingModeStarted', { card });
@@ -526,6 +558,13 @@ class Game {
     const cardToPlay = activeCard || this.selectedCard;
     if (!cardToPlay) return;
 
+    const validation = this.validateCardTarget(cardToPlay, cell);
+    if (!validation.valid) {
+      this.showToast(validation.reason || '无效目标', 1200, 'error');
+      this.updateTargetPreview(cell);
+      return;
+    }
+
     this.selectedCard = cardToPlay;
     this.playCard(cardToPlay, cell);
   }
@@ -537,7 +576,7 @@ class Game {
    */
   playCard(card, target) {
     this.clearCardConfirmation();
-    console.log('Playing card:', card.name, 'on target:', target);
+    this.debug('Playing card:', card.name, 'on target:', target);
 
     // Prepare game state for effect execution
     const gameState = {
@@ -547,12 +586,12 @@ class Game {
       player: this.player
     };
 
-    console.log('Game state:', gameState);
+    this.debug('Game state:', gameState);
 
     // Execute card effect
     const result = card.play(target, gameState);
 
-    console.log('Card play result:', result);
+    this.debug('Card play result:', result);
 
     if (result.success) {
       // Deduct energy cost
@@ -597,7 +636,7 @@ class Game {
     } else {
       // Show error message
       console.error('Card play failed:', result.reason);
-      alert(`卡牌使用失败: ${result.reason || '未知错误'}`);
+      this.showToast(`卡牌使用失败：${result.reason || '未知错误'}`, 2000, 'error');
     }
 
     // Always exit targeting mode
@@ -612,6 +651,7 @@ class Game {
   exitTargetingMode() {
     this.targetingMode = false;
     this.selectedCard = null;
+    this.clearTargetPreview();
     this.clearCardConfirmation();
 
     // Keep hand selection in sync with game selection state.
@@ -673,15 +713,98 @@ class Game {
    * @param {string} message - Message to show
    * @param {number} duration - Duration in ms
    */
-  showToast(message, duration = 2000) {
+  showToast(message, duration = 2000, type = 'normal') {
     const messageEl = document.getElementById('targeting-message');
     if (messageEl) {
       messageEl.textContent = message;
       messageEl.style.display = 'block';
-      messageEl.classList.remove('error');
+      messageEl.classList.toggle('error', type === 'error');
       setTimeout(() => {
         messageEl.style.display = 'none';
+        messageEl.classList.remove('error');
       }, duration);
+    }
+  }
+
+  /**
+   * Debug logger controlled by config.debug.enabled
+   * @param  {...any} args - log arguments
+   */
+  debug(...args) {
+    if (!this.debugEnabled) return;
+    console.log('[Game]', ...args);
+  }
+
+  /**
+   * Validate target for current selected card
+   * @param {Card} card - card to play
+   * @param {Object} cell - candidate target cell
+   * @returns {{valid: boolean, reason?: string}}
+   */
+  validateCardTarget(card, cell) {
+    if (!card || !cell) return { valid: false, reason: '需要选择目标' };
+
+    if (card.targetType !== 'single') {
+      return { valid: true };
+    }
+
+    // Special case: mine_detector can target any valid cell.
+    if (card.id === 'mine_detector') {
+      return { valid: true };
+    }
+
+    if (cell.revealed) {
+      return { valid: false, reason: '该目标已揭示' };
+    }
+
+    if (cell.flagged) {
+      return { valid: false, reason: '请先取消旗标再施放' };
+    }
+
+    return { valid: true };
+  }
+
+  /**
+   * Update visual preview for card targeting
+   * @param {Object|null} cell - current hovered cell
+   */
+  updateTargetPreview(cell) {
+    if (!this.targetingMode || !this.gridRenderer) return;
+
+    const card = this.hand ? this.hand.getSelectedCard() : this.selectedCard;
+    if (!card || !cell) {
+      this.clearTargetPreview();
+      return;
+    }
+
+    const validation = this.validateCardTarget(card, cell);
+    const isSameCell = this.previewTargetCell
+      && this.previewTargetCell.row === cell.row
+      && this.previewTargetCell.col === cell.col;
+
+    if (isSameCell) {
+      this.gridRenderer.setTargetPreview(cell, validation.valid);
+      return;
+    }
+
+    if (this.previewTargetCell) {
+      this.gridRenderer.markDirty(this.previewTargetCell);
+    }
+    this.gridRenderer.markDirty(cell);
+    this.previewTargetCell = cell;
+    this.gridRenderer.setTargetPreview(cell, validation.valid);
+  }
+
+  /**
+   * Clear target preview visual state
+   */
+  clearTargetPreview() {
+    if (this.previewTargetCell && this.gridRenderer) {
+      this.gridRenderer.markDirty(this.previewTargetCell);
+    }
+    this.previewTargetCell = null;
+    if (this.gridRenderer) {
+      this.gridRenderer.clearTargetPreview();
     }
   }
 
