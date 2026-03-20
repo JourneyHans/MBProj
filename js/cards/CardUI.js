@@ -18,6 +18,7 @@ class CardUI {
     this.cardElements = new Map(); // instanceId -> DOM element
     this.selectedCardId = null;
     this.targetingMode = false;
+    this.confirmationCardId = null;
 
     // Setup event listeners
     this.setupEventListeners();
@@ -102,6 +103,11 @@ class CardUI {
     const canPlay = this.game.hand.canPlayCard(card, this.game.energy);
     if (!canPlay) {
       cardEl.classList.add('card-unplayable');
+    }
+
+    // Card pending confirmation (for no-target cards)
+    if (this.confirmationCardId && this.confirmationCardId === card.instanceId) {
+      cardEl.classList.add('card-confirm');
     }
 
     // Card content
@@ -222,6 +228,7 @@ class CardUI {
    * @param {Card} card - Selected card
    */
   showTargetingMode(card) {
+    this.confirmationCardId = null;
     this.targetingMode = true;
 
     // Show targeting indicator
@@ -268,6 +275,42 @@ class CardUI {
 
     // Clear card selection
     this.clearHighlights();
+  }
+
+  /**
+   * Show confirmation mode for no-target cards
+   * @param {Card} card - Card waiting for second-click confirmation
+   */
+  showConfirmationMode(card) {
+    this.targetingMode = false;
+    this.confirmationCardId = card.instanceId;
+    this.highlightCard(card.instanceId);
+
+    const messageEl = document.getElementById('targeting-message');
+    if (messageEl) {
+      messageEl.textContent = '再次点击该卡以确认使用';
+      messageEl.style.display = 'block';
+      messageEl.classList.remove('error');
+    }
+
+    this.render();
+    this.highlightCard(card.instanceId);
+  }
+
+  /**
+   * Hide confirmation mode
+   */
+  hideConfirmationMode() {
+    if (!this.confirmationCardId) return;
+    this.confirmationCardId = null;
+
+    const messageEl = document.getElementById('targeting-message');
+    if (messageEl) {
+      messageEl.style.display = 'none';
+      messageEl.classList.remove('error');
+    }
+
+    this.render();
   }
 
   /**

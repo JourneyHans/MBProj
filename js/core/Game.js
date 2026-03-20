@@ -52,6 +52,7 @@ class Game {
     this.maxEnergy = CONFIG.player.maxEnergy;
     this.selectedCard = null;
     this.targetingMode = false;
+    this.pendingCardConfirmation = null;
 
     // Player state
     this.player = {
@@ -457,11 +458,26 @@ class Game {
     }
 
     if (card.targetType === 'none') {
-      // Card doesn't need a target, play immediately
-      console.log('Playing card immediately (no target needed)');
-      this.playCard(card, null);
+      // No-target cards require explicit confirmation:
+      // first click selects, second click on same card confirms play.
+      if (this.targetingMode) {
+        this.exitTargetingMode();
+      }
+
+      if (this.pendingCardConfirmation && this.pendingCardConfirmation.instanceId === card.instanceId) {
+        console.log('Card confirmation received, playing card');
+        this.clearCardConfirmation();
+        this.playCard(card, null);
+        return;
+      }
+
+      this.selectedCard = card;
+      this.targetingMode = false;
+      this.setCardConfirmation(card);
       return;
     }
+
+    this.clearCardConfirmation();
 
     const wasTargeting = this.targetingMode;
     this.selectedCard = card;
@@ -510,6 +526,7 @@ class Game {
    * @param {Object|null} target - Target object
    */
   playCard(card, target) {
+    this.clearCardConfirmation();
     console.log('Playing card:', card.name, 'on target:', target);
 
     // Prepare game state for effect execution
@@ -576,6 +593,7 @@ class Game {
   exitTargetingMode() {
     this.targetingMode = false;
     this.selectedCard = null;
+    this.clearCardConfirmation();
 
     // Keep hand selection in sync with game selection state.
     if (this.hand) {
@@ -591,6 +609,28 @@ class Game {
 
     EventBus.emit('targetingModeEnded', {});
     this.cardUI.hideTargetingMode();
+  }
+
+  /**
+   * Set pending confirmation for no-target card play
+   * @param {Card} card - Card awaiting confirmation
+   */
+  setCardConfirmation(card) {
+    this.pendingCardConfirmation = card;
+    if (this.cardUI && this.cardUI.showConfirmationMode) {
+      this.cardUI.showConfirmationMode(card);
+    }
+  }
+
+  /**
+   * Clear pending card confirmation
+   */
+  clearCardConfirmation() {
+    if (!this.pendingCardConfirmation) return;
+    this.pendingCardConfirmation = null;
+    if (this.cardUI && this.cardUI.hideConfirmationMode) {
+      this.cardUI.hideConfirmationMode();
+    }
   }
 
   /**
