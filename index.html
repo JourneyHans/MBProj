@@ -159,6 +159,9 @@
         }
 
         async function resolveGitHash() {
+            const fromVersionFile = await resolveHashFromVersionFile();
+            if (fromVersionFile) return fromVersionFile;
+
             try {
                 const headResp = await fetch('./.git/HEAD', { cache: 'no-store' });
                 if (!headResp.ok) return 'unknown';
@@ -176,6 +179,19 @@
                 return head.slice(0, 7) || 'unknown';
             } catch (error) {
                 return 'unknown';
+            }
+        }
+
+        async function resolveHashFromVersionFile() {
+            try {
+                const bust = Date.now();
+                const resp = await fetch(`./version.json?v=${bust}`, { cache: 'no-store' });
+                if (!resp.ok) return null;
+                const json = await resp.json();
+                if (!json || !json.git) return null;
+                return String(json.git).trim().slice(0, 7) || null;
+            } catch (error) {
+                return null;
             }
         }
     </script>
