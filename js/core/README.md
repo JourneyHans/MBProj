@@ -31,6 +31,27 @@
 - `StateManager.pushState()/popState()`：临时状态进出栈
 - `EventBus.on()/emit()/off()`：模块事件通信
 
+## 状态流（卡牌交互）
+
+1. `PLAYING`：默认可交互状态（网格/手牌）
+2. 点击需目标卡后进入 `CARD_SELECTION`（`targetingMode=true`）
+3. 选择有效目标后执行 `Game.playCard()`，并退出 `CARD_SELECTION`
+4. 无目标卡走二次确认：第一次点击进入确认态，第二次点击同卡执行
+5. 取消入口统一（ESC / 空白点击 / 取消按钮）并回到 `PLAYING`
+
+## 事件命名规范（当前约定）
+
+- 命名统一使用小驼峰动词短语：`stateChanged`、`cardPlayed`、`energyChanged`
+- 状态类事件：
+  - `stateChanging`：状态切换前
+  - `stateChanged`：状态切换后
+- 卡牌主流程事件：
+  - `handUpdated`、`targetingModeStarted`、`targetingModeEnded`、`cardPlayed`
+- 网格主流程事件：
+  - `cellRevealed`、`cellFlagged`、`mineTripped`、`gridComplete`
+- UI 驱动事件：
+  - `updateHUD`、`showDialog`
+
 ## 开发建议
 
 - 新增系统时优先通过 `EventBus` 接入，而不是在 `Game` 里硬编码跨模块调用
