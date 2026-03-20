@@ -117,6 +117,11 @@ class GridRenderer {
     // Draw cell content
     this.drawCellContent(cell, x, y);
 
+    // Draw protected indicator on hidden cells
+    if (cell.protected && !cell.revealed) {
+      this.drawProtectedIndicator(x, y);
+    }
+
     // Draw highlight
     if (cell.highlighted) {
       this.drawHighlight(cell, x, y);
@@ -133,7 +138,9 @@ class GridRenderer {
     let bgColor;
 
     if (cell.revealed) {
-      if (cell.isMine) {
+      if (cell.isMine && cell.protected) {
+        bgColor = '#166534';
+      } else if (cell.isMine) {
         bgColor = CONFIG.colors.cell.mine;
       } else {
         bgColor = CONFIG.colors.cell.revealed;
@@ -232,15 +239,46 @@ class GridRenderer {
   }
 
   /**
+   * Draw a protected shield indicator on a hidden cell
+   * @param {number} x - X position
+   * @param {number} y - Y position
+   */
+  drawProtectedIndicator(x, y) {
+    const cx = x + this.cellSize / 2;
+    const cy = y + this.cellSize / 2;
+
+    this.ctx.strokeStyle = '#22c55e';
+    this.ctx.lineWidth = 2;
+    this.ctx.strokeRect(x + 2, y + 2, this.cellSize - 4, this.cellSize - 4);
+
+    this.ctx.beginPath();
+    this.ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+    this.ctx.fillStyle = 'rgba(34, 197, 94, 0.5)';
+    this.ctx.fill();
+  }
+
+  /**
    * Draw highlight around cell
    * @param {Cell} cell - Cell to highlight
    * @param {number} x - X position
    * @param {number} y - Y position
    */
   drawHighlight(cell, x, y) {
-    this.ctx.strokeStyle = '#60a5fa';
-    this.ctx.lineWidth = 3;
-    this.ctx.strokeRect(x, y, this.cellSize, this.cellSize);
+    if (cell.isMine) {
+      this.ctx.strokeStyle = '#f59e0b';
+      this.ctx.lineWidth = 3;
+      this.ctx.strokeRect(x + 1, y + 1, this.cellSize - 2, this.cellSize - 2);
+
+      this.ctx.fillStyle = '#fbbf24';
+      this.ctx.font = 'bold 18px Arial';
+      this.ctx.textAlign = 'center';
+      this.ctx.textBaseline = 'middle';
+      this.ctx.fillText('!', x + this.cellSize / 2, y + this.cellSize / 2);
+    } else {
+      this.ctx.strokeStyle = '#60a5fa';
+      this.ctx.lineWidth = 3;
+      this.ctx.strokeRect(x, y, this.cellSize, this.cellSize);
+    }
   }
 
   /**

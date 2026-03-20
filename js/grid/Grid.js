@@ -129,6 +129,10 @@ class Grid {
     this.revealedCount++;
 
     if (cell.isMine) {
+      if (cell.protected) {
+        EventBus.emit('cellRevealed', cell);
+        return true;
+      }
       this.trippedMine = cell;
       EventBus.emit('mineTripped', cell);
       return false;

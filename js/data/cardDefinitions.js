@@ -60,11 +60,12 @@ const CARD_DEFINITIONS = {
       neighbors.push(target); // Include the target cell
 
       let minesFound = 0;
+      const highlightedCells = [];
 
-      // Highlight all mines in the area
       neighbors.forEach(cell => {
         if (cell.isMine && !cell.revealed) {
           cell.highlighted = true;
+          highlightedCells.push(cell);
           minesFound++;
         }
       });
@@ -72,7 +73,7 @@ const CARD_DEFINITIONS = {
       return {
         success: true,
         message: `发现了 ${minesFound} 个地雷`,
-        data: { minesFound }
+        data: { minesFound, highlightedCells }
       };
     }
   },

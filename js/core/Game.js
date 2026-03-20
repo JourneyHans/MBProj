@@ -187,11 +187,21 @@ class Game {
       this.stats.startTime = Date.now();
     }
 
-    // Reveal cell
     const safe = this.grid.revealCell(row, col);
 
     if (!safe) {
-      this.gameOver();
+      if (this.player.extraLives > 0) {
+        this.player.extraLives--;
+        const cell = this.grid.getCell(row, col);
+        if (cell) {
+          cell.protected = true;
+          this.gridRenderer.markDirty(cell);
+        }
+        this.showToast('额外生命救了你！');
+        this.updateHUD();
+      } else {
+        this.gameOver();
+      }
     }
   }
 
@@ -282,21 +292,10 @@ class Game {
   }
 
   /**
-   * Handle mine tripped event
+   * Handle mine tripped event — actual reveal is deferred to gameOver()
+   * so that extraLives can prevent full mine reveal.
    */
   onMineTripped() {
-    // Reveal all mines
-    if (this.grid) {
-      const cells = this.grid.getAllCells();
-      for (let r = 0; r < this.grid.rows; r++) {
-        for (let c = 0; c < this.grid.cols; c++) {
-          if (cells[r][c].isMine) {
-            cells[r][c].revealed = true;
-            this.gridRenderer.markDirty(cells[r][c]);
-          }
-        }
-      }
-    }
   }
 
   /**
@@ -320,9 +319,20 @@ class Game {
   }
 
   /**
-   * Game over
+   * Game over — reveal all mines before showing dialog
    */
   gameOver() {
+    if (this.grid) {
+      const cells = this.grid.getAllCells();
+      for (let r = 0; r < this.grid.rows; r++) {
+        for (let c = 0; c < this.grid.cols; c++) {
+          if (cells[r][c].isMine) {
+            cells[r][c].revealed = true;
+            this.gridRenderer.markDirty(cells[r][c]);
+          }
+        }
+      }
+    }
     this.stateManager.transition(CONFIG.gameState.GAME_OVER);
     this.showGameOverDialog();
   }
@@ -344,10 +354,10 @@ class Game {
       this.stats.minesRemaining = stats.mineCount - stats.flaggedCount;
     }
 
-    // Emit event for UI to update
     EventBus.emit('updateHUD', {
       minesRemaining: this.stats.minesRemaining,
-      timeElapsed: this.stats.timeElapsed
+      timeElapsed: this.stats.timeElapsed,
+      extraLives: this.player.extraLives
     });
   }
 
@@ -570,6 +580,15 @@ class Game {
         result: result
       });
 
+      // Handle highlighted cells from effects like mine_detector
+      if (result.data && result.data.highlightedCells && result.data.highlightedCells.length > 0) {
+        result.data.highlightedCells.forEach(c => this.gridRenderer.markDirty(c));
+        this.scheduleHighlightCleanup(result.data.highlightedCells);
+      }
+
+      // Update HUD (lives, energy, etc.)
+      this.updateHUD();
+
       // Update UI
       this.cardUI.render();
 
@@ -634,12 +653,43 @@ class Game {
   }
 
   /**
+   * Schedule cleanup of highlighted cells after a delay
+   * @param {Object[]} cells - Array of cells to un-highlight
+   */
+  scheduleHighlightCleanup(cells) {
+    const duration = CONFIG.cards.highlightDuration || 3000;
+    setTimeout(() => {
+      cells.forEach(cell => {
+        cell.highlighted = false;
+        if (this.gridRenderer) {
+          this.gridRenderer.markDirty(cell);
+        }
+      });
+    }, duration);
+  }
+
+  /**
+   * Show a temporary toast message
+   * @param {string} message - Message to show
+   * @param {number} duration - Duration in ms
+   */
+  showToast(message, duration = 2000) {
+    const messageEl = document.getElementById('targeting-message');
+    if (messageEl) {
+      messageEl.textContent = message;
+      messageEl.style.display = 'block';
+      messageEl.classList.remove('error');
+      setTimeout(() => {
+        messageEl.style.display = 'none';
+      }, duration);
+    }
+  }
+
+  /**
    * Handle card played event
    * @param {Object} data - Event data
    */
   onCardPlayed(data) {
-    // Energy is already handled in playCard()
-    // Additional effects can be added here
   }
 
   /**
