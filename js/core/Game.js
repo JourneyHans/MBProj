@@ -119,6 +119,9 @@ class Game {
     this.canvas.addEventListener('touchmove', (e) => this.handleTouchMove(e), { passive: false });
     this.canvas.addEventListener('touchcancel', (e) => this.handleTouchCancel(e), { passive: false });
 
+    // Keyboard events
+    document.addEventListener('keydown', (e) => this.handleKeyDown(e));
+
     // Window resize for responsive canvas
     window.addEventListener('resize', () => this.handleResize());
   }
@@ -536,6 +539,9 @@ class Game {
 
       // Update UI
       this.cardUI.render();
+
+      // Force grid re-render to show changes
+      this.render();
     } else {
       // Show error message
       console.error('Card play failed:', result.reason);
@@ -733,6 +739,17 @@ class Game {
     if (!this.canvas || !this.gridRenderer) return;
 
     this.resizeCanvas();
+  }
+
+  /**
+   * Handle keyboard events
+   * @param {KeyboardEvent} e - Keyboard event
+   */
+  handleKeyDown(e) {
+    // ESC to cancel card selection
+    if (e.key === 'Escape' && this.targetingMode) {
+      this.exitTargetingMode();
+    }
   }
 
   /**

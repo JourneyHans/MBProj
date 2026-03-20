@@ -25,19 +25,18 @@ const CARD_DEFINITIONS = {
         return { success: false, reason: '目标已揭示' };
       }
 
-      // Safely reveal the cell
-      target.revealed = true;
+      const grid = gameState.grid;
+      if (!grid) {
+        return { success: false, reason: '网格不存在' };
+      }
 
-      // If it's a mine, protect it so it doesn't explode
+      // If it's a mine, protect it first so it doesn't explode
       if (target.isMine) {
         target.protected = true;
       }
 
-      // Check for empty cells and flood-fill
-      if (!target.isMine && target.adjacentMines === 0) {
-        const grid = gameState.grid;
-        grid.revealEmptyArea(target.row, target.col);
-      }
+      // Use Grid's revealCell method to properly trigger events
+      grid.revealCell(target.row, target.col);
 
       return { success: true, message: '格子已安全揭示' };
     }

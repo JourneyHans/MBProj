@@ -152,9 +152,10 @@ class CardUI {
    * @param {Card} card - Clicked card
    */
   onCardClick(card) {
-    // If already in targeting mode, ignore
+    // If already in targeting mode, exit it first
     if (this.targetingMode) {
-      return;
+      this.hideTargetingMode();
+      this.targetingMode = false;
     }
 
     // Check if card is playable
