@@ -1,10 +1,11 @@
 # core 模块开发文档
 
 `js/core/` 是游戏运行时的控制中枢，负责状态、循环、事件和主流程编排。
+在 `v0.3.x-alpha` 阶段，核心目标是承接“怪物化扫雷”主线重构。
 
 ## 目录与职责
 
-- `Game.js`：主控制器，组织所有系统并处理输入
+- `Game.js`：主控制器，组织网格信息层、卡牌战术层与 Run 流程
 - `GameLoop.js`：基于 `requestAnimationFrame` 的主循环
 - `StateManager.js`：状态机与状态栈（`PLAYING` / `CARD_SELECTION` 等）
 - `EventBus.js`：发布-订阅事件系统，解耦模块通信
@@ -20,12 +21,20 @@
 1. `Game.initialize(canvas)` 初始化渲染器、输入、卡牌系统
 2. `GameLoop.start()` 驱动 `update()` + `render()`
 3. 用户输入进入 `Game.handleClick/handleTouch...`
-4. 根据状态分流到网格或卡牌逻辑
+4. 根据状态分流到网格揭示、怪物处理或卡牌逻辑
 5. 通过 `EventBus.emit()` 通知 HUD/UI 更新
+
+### 怪物遭遇最小闭环（P3-A）
+
+1. 揭示地雷 -> `mineTripped` -> `Game.startMonsterEncounter()`
+2. 进入显形怪物处理阶段（普通揭示受限）
+3. 使用卡牌造成伤害或硬闯承伤
+4. 怪物结算 -> `Game.resolveMonsterEncounter()` -> 新回合补能量/补手牌
+5. 仅在“安全区清空 + 怪物全处理”时触发胜利
 
 ## 常用接口
 
-- `Game.startNewGame()`：重置网格、牌组、能量、生命并进入 `PLAYING`
+- `Game.startNewGame()`：重置网格、牌组、能量、玩家状态并进入 `PLAYING`
 - `Game.onCardSelected(card)`：统一卡牌选择入口
 - `Game.playCard(card, target)`：执行卡牌效果并更新资源
 - `StateManager.pushState()/popState()`：临时状态进出栈
@@ -57,6 +66,7 @@
 - 新增系统时优先通过 `EventBus` 接入，而不是在 `Game` 里硬编码跨模块调用
 - 新状态要同步更新 `canInteract()` 规则
 - 调试日志统一通过 `Game.debug()` 输出，并由 `CONFIG.debug.enabled` 控制开关
+- 玩法重构期间需保持约束：揭示到地雷后应进入可处理状态，而非直接作为唯一失败来源
 - 卡牌流程改动后要重点回归：
   - 选卡切换
   - 目标选择

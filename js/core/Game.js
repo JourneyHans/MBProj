@@ -41,7 +41,9 @@ class Game {
     this.stats = {
       minesRemaining: 0,
       timeElapsed: 0,
-      startTime: 0
+      startTime: 0,
+      turn: 0,
+      monstersResolved: 0
     };
 
     // Card system
@@ -58,9 +60,11 @@ class Game {
 
     // Player state
     this.player = {
+      baseLives: CONFIG.player.startBaseLives || 2,
       extraLives: CONFIG.player.startExtraLives,
       gold: CONFIG.player.startGold
     };
+    this.activeMonsterEncounter = null;
 
     // Setup event listeners
     this.setupEventListeners();
@@ -99,7 +103,7 @@ class Game {
   setupEventListeners() {
     // Grid events
     EventBus.on('gridComplete', () => this.onGridComplete());
-    EventBus.on('mineTripped', () => this.onMineTripped());
+    EventBus.on('mineTripped', (cell) => this.onMineTripped(cell));
     EventBus.on('cellRevealed', (cell) => this.onCellRevealed(cell));
     EventBus.on('cellFlagged', (cell) => this.onCellFlagged(cell));
 
@@ -236,6 +240,16 @@ class Game {
   handleCellLeftClick(row, col) {
     if (!this.grid) return;
 
+    // During a monster encounter, player must resolve current threat first.
+    if (this.activeMonsterEncounter) {
+      if (this.isActiveMonsterCell(row, col)) {
+        this.forcePassMonsterEncounter();
+      } else {
+        this.showToast('有怪物正在追击！请先处理显形怪物。', 1500, 'error');
+      }
+      return;
+    }
+
     // First click initialization
     if (!this.grid.initialized) {
       this.grid.initialize({ row, col });
@@ -245,17 +259,10 @@ class Game {
     const safe = this.grid.revealCell(row, col);
 
     if (!safe) {
-      if (this.player.extraLives > 0) {
-        this.player.extraLives--;
-        const cell = this.grid.getCell(row, col);
-        if (cell) {
-          cell.protected = true;
-          this.gridRenderer.markDirty(cell);
-        }
-        this.showToast('额外生命救了你！');
-        this.updateHUD();
-      } else {
-        this.gameOver();
+      // Mine hit now enters a monster handling flow.
+      // Keep fallback safety in case event delivery fails unexpectedly.
+      if (!this.activeMonsterEncounter) {
+        this.startMonsterEncounter(this.grid.getCell(row, col));
       }
     }
   }
@@ -287,11 +294,15 @@ class Game {
     this.stats.minesRemaining = mineCount;
     this.stats.timeElapsed = 0;
     this.stats.startTime = 0;
+    this.stats.turn = 0;
+    this.stats.monstersResolved = 0;
 
     // Reset card system
-    this.energy = CONFIG.player.startEnergy;
+    this.energy = 0;
+    this.player.baseLives = CONFIG.player.startBaseLives || 2;
     this.player.extraLives = CONFIG.player.startExtraLives;
     this.player.gold = CONFIG.player.startGold;
+    this.activeMonsterEncounter = null;
 
     // Reset deck and hand
     const startingDeck = [
@@ -304,8 +315,8 @@ class Game {
     this.deck.initialize(startingDeck);
     this.hand.clear();
 
-    // Draw initial hand
-    this.drawCards(CONFIG.player.cardsPerTurn);
+    // Start first player turn
+    this.beginPlayerTurn('开局');
 
     this.updateHUD();
     this.resizeCanvas(); // Resize canvas for new grid
@@ -343,14 +354,19 @@ class Game {
    * Handle grid complete event
    */
   onGridComplete() {
+    const unresolvedMonsters = this.getUnresolvedMonsterCount();
+    if (unresolvedMonsters > 0) {
+      this.showToast(`安全区域已清空，但仍有 ${unresolvedMonsters} 个怪物待处理。`, 1800, 'error');
+      return;
+    }
     this.victory();
   }
 
   /**
-   * Handle mine tripped event — actual reveal is deferred to gameOver()
-   * so that extraLives can prevent full mine reveal.
+   * Handle mine tripped event - enter monster encounter flow.
    */
-  onMineTripped() {
+  onMineTripped(cell) {
+    this.startMonsterEncounter(cell || (this.grid && this.grid.trippedMine));
   }
 
   /**
@@ -412,7 +428,9 @@ class Game {
     EventBus.emit('updateHUD', {
       minesRemaining: this.stats.minesRemaining,
       timeElapsed: this.stats.timeElapsed,
-      extraLives: this.player.extraLives
+      extraLives: this.getRemainingLives(),
+      turn: this.stats.turn,
+      monstersResolved: this.stats.monstersResolved
     });
   }
 
@@ -422,7 +440,7 @@ class Game {
   showGameOverDialog() {
     EventBus.emit('showDialog', {
       title: 'Game Over',
-      message: 'You hit a mine!',
+      message: '你的生命已耗尽，Run 结束。',
       actions: [
         { label: 'Try Again', action: () => this.startNewGame() },
         { label: 'Menu', action: () => this.showMenu() }
@@ -437,7 +455,7 @@ class Game {
     const time = Math.floor(this.stats.timeElapsed / 1000);
     EventBus.emit('showDialog', {
       title: 'Victory!',
-      message: `You cleared the grid in ${time} seconds!`,
+      message: `你在 ${time} 秒内完成本局，共处理 ${this.stats.monstersResolved} 个怪物。`,
       actions: [
         { label: 'Play Again', action: () => this.startNewGame() },
         { label: 'Menu', action: () => this.showMenu() }
@@ -790,8 +808,23 @@ class Game {
       return { valid: true };
     }
 
+    // During an active encounter, scout must target the revealed mine cell.
+    if (this.activeMonsterEncounter && card.id === 'scout') {
+      if (this.isActiveMonsterCell(cell.row, cell.col)) {
+        return { valid: true };
+      }
+      return { valid: false, reason: '请将侦察用于当前显形怪物' };
+    }
+
+    if (this.activeMonsterEncounter && card.id !== 'mine_detector') {
+      return { valid: false, reason: '请先处理当前显形怪物' };
+    }
+
     // Special case: mine_detector can target any valid cell.
     if (card.id === 'mine_detector') {
+      if (this.activeMonsterEncounter && !this.isActiveMonsterCell(cell.row, cell.col)) {
+        return { valid: false, reason: '怪物战斗中请将目标指向当前显形怪物' };
+      }
       return { valid: true };
     }
 
@@ -863,6 +896,19 @@ class Game {
    * @param {Object} data - Event data
    */
   onCardPlayed(data) {
+    if (!this.activeMonsterEncounter || !data) {
+      return;
+    }
+
+    const { card, target } = data;
+    const isActiveTarget = Boolean(target && this.isActiveMonsterCell(target.row, target.col));
+    const damage = this.getCardEncounterDamage(card, isActiveTarget);
+    if (damage > 0) {
+      this.applyDamageToActiveMonster(damage, card);
+      return;
+    }
+
+    this.applyMonsterCounterAttack(`怪物反击！你受到 ${this.activeMonsterEncounter.attack} 点伤害。`);
   }
 
   /**
@@ -880,6 +926,224 @@ class Game {
 
     // Update UI
     this.cardUI.updateEnergyIndicator(this.energy, this.maxEnergy);
+  }
+
+  /**
+   * Start a minimal monster encounter when a mine is revealed.
+   * @param {Object|null} cell - Mine cell that triggered the encounter
+   */
+  startMonsterEncounter(cell) {
+    if (!cell || !cell.isMine) return;
+    if (this.activeMonsterEncounter && this.isActiveMonsterCell(cell.row, cell.col)) return;
+    if (cell.monsterCleared) return;
+
+    const encounterLevel = Math.max(1, Math.floor(this.stats.turn / 3) + 1);
+    this.activeMonsterEncounter = {
+      row: cell.row,
+      col: cell.col,
+      hp: 2 + Math.floor(encounterLevel / 2),
+      maxHp: 2 + Math.floor(encounterLevel / 2),
+      attack: 1 + Math.floor(encounterLevel / 3)
+    };
+    this.showToast(
+      `怪物显形（HP:${this.activeMonsterEncounter.hp} 攻击:${this.activeMonsterEncounter.attack}）！用卡牌处理或点击该格硬闯。`,
+      2600,
+      'error'
+    );
+  }
+
+  /**
+   * Resolve current monster encounter.
+   * @param {string} message - Feedback toast text
+   */
+  resolveMonsterEncounter(message) {
+    if (!this.activeMonsterEncounter || !this.grid) return;
+
+    const cell = this.grid.getCell(this.activeMonsterEncounter.row, this.activeMonsterEncounter.col);
+    if (cell) {
+      cell.monsterCleared = true;
+      if (this.gridRenderer) {
+        this.gridRenderer.markDirty(cell);
+      }
+    }
+
+    this.stats.monstersResolved++;
+    this.activeMonsterEncounter = null;
+    if (message) {
+      this.showToast(message, 1400);
+    }
+
+    this.beginPlayerTurn('遭遇结算');
+    this.checkRunCompletion();
+  }
+
+  /**
+   * Force pass monster encounter by taking damage.
+   */
+  forcePassMonsterEncounter() {
+    const survived = this.consumeLife(this.activeMonsterEncounter ? this.activeMonsterEncounter.attack : 1);
+    if (!survived) return;
+    this.resolveMonsterEncounter('你强行突破了怪物，但付出了生命代价。');
+  }
+
+  /**
+   * Apply 1 damage from monster and optionally clear encounter afterwards.
+   * @param {string} message - Feedback text
+   * @param {boolean} clearAfterHit - Whether to clear encounter after damage
+   */
+  applyMonsterCounterAttack(message, clearAfterHit = false) {
+    const attackDamage = this.activeMonsterEncounter ? this.activeMonsterEncounter.attack : 1;
+    const survived = this.consumeLife(attackDamage);
+    if (!survived) return;
+
+    if (clearAfterHit) {
+      this.activeMonsterEncounter = null;
+    }
+    this.showToast(message, 1600, 'error');
+  }
+
+  /**
+   * Consume one life from extra life pool first, then base lives.
+   * @returns {boolean} true if player still alive after damage
+   */
+  consumeLife(damage = 1) {
+    let remainingDamage = Math.max(1, damage);
+
+    while (remainingDamage > 0) {
+      if (this.player.extraLives > 0) {
+        this.player.extraLives--;
+      } else {
+        this.player.baseLives--;
+      }
+      remainingDamage--;
+
+      if (this.getRemainingLives() <= 0) {
+        this.updateHUD();
+        this.gameOver();
+        return false;
+      }
+    }
+
+    this.updateHUD();
+    return true;
+  }
+
+  /**
+   * Get total remaining survivability.
+   * @returns {number}
+   */
+  getRemainingLives() {
+    return Math.max(0, (this.player.baseLives || 0) + (this.player.extraLives || 0));
+  }
+
+  /**
+   * Check if coordinates match active monster cell.
+   * @param {number} row - row index
+   * @param {number} col - col index
+   * @returns {boolean}
+   */
+  isActiveMonsterCell(row, col) {
+    if (!this.activeMonsterEncounter) return false;
+    return this.activeMonsterEncounter.row === row && this.activeMonsterEncounter.col === col;
+  }
+
+  /**
+   * Apply card damage to current active monster.
+   * @param {number} damage - Damage amount
+   * @param {Object} card - Card that caused damage
+   */
+  applyDamageToActiveMonster(damage, card) {
+    if (!this.activeMonsterEncounter) return;
+
+    this.activeMonsterEncounter.hp = Math.max(0, this.activeMonsterEncounter.hp - damage);
+    if (this.activeMonsterEncounter.hp <= 0) {
+      this.resolveMonsterEncounter(`你用【${card.name}】击败了显形怪物。`);
+      return;
+    }
+
+    this.showToast(`怪物受到 ${damage} 点伤害，剩余 ${this.activeMonsterEncounter.hp} HP。`, 1200);
+    this.applyMonsterCounterAttack(`怪物反击！你受到 ${this.activeMonsterEncounter.attack} 点伤害。`);
+  }
+
+  /**
+   * Get card damage against active encounter.
+   * @param {Object} card - Played card
+   * @param {boolean} isActiveTarget - Whether target is current monster
+   * @returns {number}
+   */
+  getCardEncounterDamage(card, isActiveTarget) {
+    if (!card || !this.activeMonsterEncounter) return 0;
+
+    if (card.id === 'scout' && isActiveTarget) return 2;
+    if (card.id === 'mine_detector' && isActiveTarget) return 1;
+    return 0;
+  }
+
+  /**
+   * Begin a new player turn: refill energy and top-up hand.
+   * @param {string} reason - Turn transition reason
+   */
+  beginPlayerTurn(reason = '') {
+    this.stats.turn += 1;
+    this.energy = CONFIG.player.startEnergy;
+
+    EventBus.emit('energyChanged', {
+      current: this.energy,
+      max: this.maxEnergy
+    });
+
+    const targetHandSize = Math.min(CONFIG.player.cardsPerTurn, this.hand.getMaxSize());
+    const missingCards = Math.max(0, targetHandSize - this.hand.getHandSize());
+    if (missingCards > 0) {
+      this.drawCards(missingCards);
+    } else if (this.cardUI) {
+      this.cardUI.render();
+    }
+
+    this.updateHUD();
+    if (reason) {
+      this.showToast(`回合 ${this.stats.turn}：${reason}`, 900);
+    }
+  }
+
+  /**
+   * Check whether run clear condition is met.
+   */
+  checkRunCompletion() {
+    if (!this.grid) return;
+    if (this.getUnresolvedMonsterCount() > 0) return;
+    if (!this.isSafeAreaCleared()) return;
+    this.victory();
+  }
+
+  /**
+   * Count unresolved mine monsters on board.
+   * @returns {number}
+   */
+  getUnresolvedMonsterCount() {
+    if (!this.grid) return 0;
+
+    const cells = this.grid.getAllCells();
+    let unresolved = 0;
+    for (let r = 0; r < this.grid.rows; r++) {
+      for (let c = 0; c < this.grid.cols; c++) {
+        const cell = cells[r][c];
+        if (cell.isMine && !cell.monsterCleared) {
+          unresolved++;
+        }
+      }
+    }
+    return unresolved;
+  }
+
+  /**
+   * Determine whether all safe cells are already revealed.
+   * @returns {boolean}
+   */
+  isSafeAreaCleared() {
+    if (!this.grid) return false;
+    const stats = this.grid.getStats();
+    return stats.revealedCount >= stats.safeCells;
   }
 
   /**

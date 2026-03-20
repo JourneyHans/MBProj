@@ -23,6 +23,7 @@ const CONFIG = {
 
   // Player settings
   player: {
+    startBaseLives: 2,
     startEnergy: 3,
     maxEnergy: 10,
     startExtraLives: 0,
