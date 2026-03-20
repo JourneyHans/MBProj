@@ -126,9 +126,32 @@ class Game {
 
     // Keyboard events
     document.addEventListener('keydown', (e) => this.handleKeyDown(e));
+    document.addEventListener('click', (e) => this.handleDocumentClick(e));
 
     // Window resize for responsive canvas
     window.addEventListener('resize', () => this.handleResize());
+  }
+
+  /**
+   * Handle document click to cancel card interaction on blank areas
+   * @param {MouseEvent} e - Mouse event
+   */
+  handleDocumentClick(e) {
+    if (!this.isCardInteractionActive()) return;
+
+    const target = e.target;
+    if (!(target instanceof Element)) return;
+
+    const isOnCanvas = Boolean(target.closest('#game-canvas'));
+    const isInHand = Boolean(target.closest('#hand-container'));
+    const isInDialog = Boolean(target.closest('#dialog-overlay'));
+    const isInMenu = Boolean(target.closest('#menu'));
+
+    if (isOnCanvas || isInHand || isInDialog || isInMenu) {
+      return;
+    }
+
+    this.cancelCardInteraction();
   }
 
   /**
@@ -671,6 +694,25 @@ class Game {
   }
 
   /**
+   * Cancel current card interaction (targeting or confirmation)
+   */
+  cancelCardInteraction() {
+    if (this.targetingMode) {
+      this.exitTargetingMode();
+      return;
+    }
+
+    if (!this.pendingCardConfirmation) return;
+
+    this.clearTargetPreview();
+    this.selectedCard = null;
+    this.clearCardConfirmation();
+    if (this.hand) {
+      this.hand.deselectAll();
+    }
+  }
+
+  /**
    * Set pending confirmation for no-target card play
    * @param {Card} card - Card awaiting confirmation
    */
@@ -806,6 +848,14 @@ class Game {
     if (this.gridRenderer) {
       this.gridRenderer.clearTargetPreview();
     }
+  }
+
+  /**
+   * Check if there is an active card interaction to cancel
+   * @returns {boolean}
+   */
+  isCardInteractionActive() {
+    return this.targetingMode || Boolean(this.pendingCardConfirmation);
   }
 
   /**
@@ -984,8 +1034,8 @@ class Game {
    */
   handleKeyDown(e) {
     // ESC to cancel card selection
-    if (e.key === 'Escape' && this.targetingMode) {
-      this.exitTargetingMode();
+    if (e.key === 'Escape' && this.isCardInteractionActive()) {
+      this.cancelCardInteraction();
     }
   }
 

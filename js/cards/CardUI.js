@@ -6,8 +6,8 @@
 import EventBus from '../core/EventBus.js';
 
 const UI_MESSAGES = {
-  selectTarget: '请选择目标格子',
-  confirmNoTarget: '再次点击该卡以确认使用',
+  selectTarget: '请选择目标格子，或点击取消',
+  confirmNoTarget: '再次点击该卡确认，或点击取消',
   notEnoughEnergy: (required, current) => `能量不足（需要 ${required}，当前 ${current}）`
 };
 
@@ -24,9 +24,11 @@ class CardUI {
     this.selectedCardId = null;
     this.targetingMode = false;
     this.confirmationCardId = null;
+    this.cancelButton = document.getElementById('card-cancel-button');
 
     // Setup event listeners
     this.setupEventListeners();
+    this.setupCancelButton();
   }
 
   /**
@@ -62,6 +64,18 @@ class CardUI {
       if (e.key === 'Escape') {
         this.cancelCardSelection();
       }
+    });
+  }
+
+  /**
+   * Setup cancel button interaction
+   */
+  setupCancelButton() {
+    if (!this.cancelButton) return;
+    this.cancelButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.cancelCardSelection();
     });
   }
 
@@ -240,6 +254,7 @@ class CardUI {
 
     // Show targeting message
     this.showMessage(`${UI_MESSAGES.selectTarget}: ${card.name}`);
+    this.showCancelButton();
 
     // Change cursor
     if (this.game.canvas) {
@@ -261,6 +276,7 @@ class CardUI {
 
     // Hide targeting message
     this.hideMessage();
+    this.hideCancelButton();
 
     // Reset cursor
     if (this.game.canvas) {
@@ -281,6 +297,7 @@ class CardUI {
     this.highlightCard(card.instanceId);
 
     this.showMessage(`${UI_MESSAGES.confirmNoTarget}: ${card.name}`);
+    this.showCancelButton();
 
     this.render();
     this.highlightCard(card.instanceId);
@@ -294,6 +311,7 @@ class CardUI {
     this.confirmationCardId = null;
 
     this.hideMessage();
+    this.hideCancelButton();
 
     this.render();
   }
@@ -375,12 +393,31 @@ class CardUI {
   }
 
   /**
+   * Show dedicated cancel button
+   */
+  showCancelButton() {
+    if (!this.cancelButton) return;
+    this.cancelButton.style.display = 'inline-flex';
+  }
+
+  /**
+   * Hide dedicated cancel button
+   */
+  hideCancelButton() {
+    if (!this.cancelButton) return;
+    this.cancelButton.style.display = 'none';
+  }
+
+  /**
    * Cancel card selection
    */
   cancelCardSelection() {
-    if (this.targetingMode) {
-      this.game.hand.deselectAll();
-      this.game.exitTargetingMode();
+    if (this.targetingMode || this.confirmationCardId) {
+      if (this.game && typeof this.game.cancelCardInteraction === 'function') {
+        this.game.cancelCardInteraction();
+      } else if (this.game && this.game.hand) {
+        this.game.hand.deselectAll();
+      }
     }
   }
 

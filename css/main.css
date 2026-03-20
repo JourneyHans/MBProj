@@ -474,6 +474,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  position: relative;
 }
 
 /* Energy Bar */
@@ -716,6 +717,25 @@ body {
   background-color: rgba(239, 68, 68, 0.9);
 }
 
+#card-cancel-button {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 6px 12px;
+  border: 1px solid #f87171;
+  border-radius: 6px;
+  background: rgba(127, 29, 29, 0.92);
+  color: #fee2e2;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  z-index: 1001;
+}
+
+#card-cancel-button:hover {
+  background: rgba(153, 27, 27, 0.95);
+}
+
 /* Mobile Responsive Styles for Cards */
 @media screen and (max-width: 768px) {
   #hand-container {
@@ -773,6 +793,14 @@ body {
 
   .card-description {
     font-size: 10px;
+  }
+
+  #card-cancel-button {
+    top: 8px;
+    right: 8px;
+    min-height: 36px;
+    min-width: 56px;
+    font-size: 12px;
   }
 }
 
