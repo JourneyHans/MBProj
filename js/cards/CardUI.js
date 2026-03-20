@@ -152,19 +152,29 @@ class CardUI {
    * @param {Card} card - Clicked card
    */
   onCardClick(card) {
+    console.log('[CardUI] Card clicked:', card.name, 'Current targeting mode:', this.targetingMode);
+
     // If already in targeting mode, exit it first
     if (this.targetingMode) {
-      this.hideTargetingMode();
+      console.log('[CardUI] Exiting targeting mode for card switch');
+      // Call game's exitTargetingMode to fully reset state
+      if (this.game.exitTargetingMode && typeof this.game.exitTargetingMode === 'function') {
+        this.game.exitTargetingMode();
+      }
       this.targetingMode = false;
     }
 
     // Check if card is playable
-    if (!this.game.hand.canPlayCard(card, this.game.energy)) {
+    const canPlay = this.game.hand.canPlayCard(card, this.game.energy);
+    console.log('[CardUI] Can play card:', canPlay);
+
+    if (!canPlay) {
       this.showNotEnoughEnergy();
       return;
     }
 
     // Select the card
+    console.log('[CardUI] Selecting card and starting new targeting mode');
     this.game.hand.selectCard(card.instanceId);
 
     // Notify game to start targeting mode

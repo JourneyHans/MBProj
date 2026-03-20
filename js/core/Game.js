@@ -472,7 +472,9 @@ class Game {
       console.log('Entering targeting mode');
       this.stateManager.pushState(CONFIG.gameState.CARD_SELECTION);
       EventBus.emit('targetingModeStarted', { card });
-      this.cardUI.showTargetingMode(card);
+      if (this.cardUI && this.cardUI.showTargetingMode) {
+        this.cardUI.showTargetingMode(card);
+      }
     }
   }
 
