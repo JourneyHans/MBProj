@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="css/main.css">
 </head>
 <body>
+    <div id="git-version-badge">git: --</div>
     <div id="game-container">
         <!-- HUD -->
         <div id="hud">
@@ -84,6 +85,7 @@
             const canvas = document.getElementById('game-canvas');
             game = new Game();
             game.initialize(canvas);
+            initGitVersionBadge();
 
             // Setup menu buttons
             document.getElementById('start-button').addEventListener('click', () => {
@@ -139,6 +141,35 @@
 
             // Show dialog
             overlay.style.display = 'flex';
+        }
+
+        async function initGitVersionBadge() {
+            const badge = document.getElementById('git-version-badge');
+            if (!badge) return;
+
+            const hash = await resolveGitHash();
+            badge.textContent = `git: ${hash}`;
+        }
+
+        async function resolveGitHash() {
+            try {
+                const headResp = await fetch('./.git/HEAD', { cache: 'no-store' });
+                if (!headResp.ok) return 'unknown';
+
+                const head = (await headResp.text()).trim();
+
+                if (head.startsWith('ref: ')) {
+                    const refPath = head.slice(5).trim();
+                    const refResp = await fetch(`./.git/${refPath}`, { cache: 'no-store' });
+                    if (!refResp.ok) return 'unknown';
+                    const fullHash = (await refResp.text()).trim();
+                    return fullHash.slice(0, 7) || 'unknown';
+                }
+
+                return head.slice(0, 7) || 'unknown';
+            } catch (error) {
+                return 'unknown';
+            }
         }
     </script>
 </body>

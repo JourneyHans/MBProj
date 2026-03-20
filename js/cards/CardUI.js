@@ -117,7 +117,10 @@ class CardUI {
     `;
 
     // Click event
-    cardEl.addEventListener('click', () => {
+    cardEl.addEventListener('click', (e) => {
+      // Prevent card clicks from triggering any underlying interactions.
+      e.preventDefault();
+      e.stopPropagation();
       this.onCardClick(card);
     });
 
@@ -154,16 +157,6 @@ class CardUI {
   onCardClick(card) {
     console.log('[CardUI] Card clicked:', card.name, 'Current targeting mode:', this.targetingMode);
 
-    // If already in targeting mode, exit it first
-    if (this.targetingMode) {
-      console.log('[CardUI] Exiting targeting mode for card switch');
-      // Call game's exitTargetingMode to fully reset state
-      if (this.game.exitTargetingMode && typeof this.game.exitTargetingMode === 'function') {
-        this.game.exitTargetingMode();
-      }
-      this.targetingMode = false;
-    }
-
     // Check if card is playable
     const canPlay = this.game.hand.canPlayCard(card, this.game.energy);
     console.log('[CardUI] Can play card:', canPlay);
@@ -174,7 +167,7 @@ class CardUI {
     }
 
     // Select the card
-    console.log('[CardUI] Selecting card and starting new targeting mode');
+    console.log('[CardUI] Selecting card / switching targeting card');
     this.game.hand.selectCard(card.instanceId);
 
     // Notify game to start targeting mode

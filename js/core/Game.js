@@ -456,6 +456,14 @@ class Game {
       return;
     }
 
+    if (card.targetType === 'none') {
+      // Card doesn't need a target, play immediately
+      console.log('Playing card immediately (no target needed)');
+      this.playCard(card, null);
+      return;
+    }
+
+    const wasTargeting = this.targetingMode;
     this.selectedCard = card;
     this.targetingMode = true;
 
@@ -463,18 +471,18 @@ class Game {
     console.log('selectedCard:', this.selectedCard);
     console.log('targetingMode:', this.targetingMode);
 
-    if (card.targetType === 'none') {
-      // Card doesn't need a target, play immediately
-      console.log('Playing card immediately (no target needed)');
-      this.playCard(card, null);
-    } else {
-      // Enter targeting mode
+    // Enter CARD_SELECTION only once; clicking another card while targeting
+    // should only switch selected card instead of stacking duplicate states.
+    if (!wasTargeting && this.stateManager.getCurrentState() !== CONFIG.gameState.CARD_SELECTION) {
       console.log('Entering targeting mode');
       this.stateManager.pushState(CONFIG.gameState.CARD_SELECTION);
-      EventBus.emit('targetingModeStarted', { card });
-      if (this.cardUI && this.cardUI.showTargetingMode) {
-        this.cardUI.showTargetingMode(card);
-      }
+    } else if (wasTargeting) {
+      console.log('Switching targeting card without state transition');
+    }
+
+    EventBus.emit('targetingModeStarted', { card });
+    if (this.cardUI && this.cardUI.showTargetingMode) {
+      this.cardUI.showTargetingMode(card);
     }
   }
 
@@ -483,11 +491,17 @@ class Game {
    * @param {Object} cell - Target cell
    */
   onTargetSelected(cell) {
-    if (!this.targetingMode || !this.selectedCard) {
+    if (!this.targetingMode) {
       return;
     }
 
-    this.playCard(this.selectedCard, cell);
+    // Prefer the current selected card in hand to avoid stale selection state.
+    const activeCard = this.hand ? this.hand.getSelectedCard() : null;
+    const cardToPlay = activeCard || this.selectedCard;
+    if (!cardToPlay) return;
+
+    this.selectedCard = cardToPlay;
+    this.playCard(cardToPlay, cell);
   }
 
   /**
@@ -563,8 +577,16 @@ class Game {
     this.targetingMode = false;
     this.selectedCard = null;
 
-    if (this.stateManager.getCurrentState() === CONFIG.gameState.CARD_SELECTION) {
+    // Keep hand selection in sync with game selection state.
+    if (this.hand) {
+      this.hand.deselectAll();
+    }
+
+    // Defensive unwind in case duplicate CARD_SELECTION states were pushed.
+    let safetyCounter = 0;
+    while (this.stateManager.getCurrentState() === CONFIG.gameState.CARD_SELECTION && safetyCounter < 10) {
       this.stateManager.popState();
+      safetyCounter++;
     }
 
     EventBus.emit('targetingModeEnded', {});

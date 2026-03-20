@@ -19,6 +19,21 @@ body {
   min-height: 100vh;
 }
 
+#git-version-badge {
+  position: fixed;
+  top: 10px;
+  right: 12px;
+  z-index: 999;
+  font-size: 12px;
+  color: #cbd5e1;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 4px 8px;
+  letter-spacing: 0.4px;
+  user-select: text;
+}
+
 #game-container {
   display: flex;
   flex-direction: column;
