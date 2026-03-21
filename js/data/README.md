@@ -1,6 +1,7 @@
 # data 模块开发文档
 
 `js/data/` 存放纯数据定义，避免业务逻辑散落到控制层。
+在 `Phase 3` 将逐步承载怪物与事件等玩法数据。
 
 ## 当前文件
 
@@ -34,3 +35,7 @@
   - `CardUI.js`（展示层）
   - 模块文档 `js/cards/README.md`
 - 效果中若产生临时视觉状态，建议放到 `data` 返回结构，由 `Game` 统一收口处理
+- 后续新增数据建议拆分：
+  - `monsterDefinitions.js`
+  - `eventDefinitions.js`
+  - `rewardTables.js`
