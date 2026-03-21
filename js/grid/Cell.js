@@ -18,6 +18,8 @@ class Cell {
     // Special states
     this.highlighted = false; // For card effects
     this.protected = false;   // Cannot be mine
+    this.monsterType = null;
+    this.monsterCleared = false;
   }
 
   /**
@@ -30,6 +32,8 @@ class Cell {
     this.adjacentMines = 0;
     this.highlighted = false;
     this.protected = false;
+    this.monsterType = null;
+    this.monsterCleared = false;
   }
 
   /**
@@ -102,6 +106,8 @@ class Cell {
     cloned.adjacentMines = this.adjacentMines;
     cloned.highlighted = this.highlighted;
     cloned.protected = this.protected;
+    cloned.monsterType = this.monsterType;
+    cloned.monsterCleared = this.monsterCleared;
     return cloned;
   }
 }

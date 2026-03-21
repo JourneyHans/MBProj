@@ -6,6 +6,7 @@
 ## 当前文件
 
 - `cardDefinitions.js`：基础卡牌定义（MVP）
+- `monsterDefinitions.js`：怪物类型、权重与成长模板（P3）
 
 ## 设计原则
 
@@ -36,6 +37,5 @@
   - 模块文档 `js/cards/README.md`
 - 效果中若产生临时视觉状态，建议放到 `data` 返回结构，由 `Game` 统一收口处理
 - 后续新增数据建议拆分：
-  - `monsterDefinitions.js`
   - `eventDefinitions.js`
   - `rewardTables.js`

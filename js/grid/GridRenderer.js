@@ -3,6 +3,7 @@
  */
 
 import CONFIG from '../config.js';
+import { getMonsterDefinition } from '../data/monsterDefinitions.js';
 
 class GridRenderer {
   constructor(canvas) {
@@ -144,6 +145,8 @@ class GridRenderer {
     if (cell.revealed) {
       if (cell.isMine && cell.protected) {
         bgColor = '#166534';
+      } else if (cell.isMine && cell.monsterCleared) {
+        bgColor = '#14532d';
       } else if (cell.isMine) {
         bgColor = CONFIG.colors.cell.mine;
       } else {
@@ -172,7 +175,7 @@ class GridRenderer {
       this.drawFlag(x, y);
     } else if (cell.revealed) {
       if (cell.isMine) {
-        this.drawMine(x, y);
+        this.drawMine(cell, x, y);
       } else if (cell.adjacentMines > 0) {
         this.drawNumber(cell.adjacentMines, x, y);
       }
@@ -205,24 +208,33 @@ class GridRenderer {
   }
 
   /**
-   * Draw a mine
+   * Draw a mine/monster cell
+   * @param {Cell} cell - Mine cell to draw
    * @param {number} x - X position
    * @param {number} y - Y position
    */
-  drawMine(x, y) {
+  drawMine(cell, x, y) {
     const centerX = x + this.cellSize / 2;
     const centerY = y + this.cellSize / 2;
-    const radius = 10;
+    const emoji = this.getMonsterEmoji(cell);
 
-    this.ctx.fillStyle = '#7f1d1d';
-    this.ctx.beginPath();
-    this.ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-    this.ctx.fill();
+    this.ctx.font = '22px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+    this.ctx.textAlign = 'center';
+    this.ctx.textBaseline = 'middle';
+    this.ctx.fillText(emoji, centerX, centerY);
+  }
 
-    this.ctx.fillStyle = '#1f2937';
-    this.ctx.beginPath();
-    this.ctx.arc(centerX - 3, centerY - 3, 3, 0, Math.PI * 2);
-    this.ctx.fill();
+  /**
+   * Resolve monster emoji from type definition.
+   * @param {Cell} cell - Mine cell
+   * @returns {string}
+   */
+  getMonsterEmoji(cell) {
+    const def = getMonsterDefinition(cell.monsterType || 'slime');
+    if (!def) {
+      return cell.monsterCleared ? '💀' : '👾';
+    }
+    return cell.monsterCleared ? def.clearedEmoji : def.emoji;
   }
 
   /**

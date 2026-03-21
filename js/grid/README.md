@@ -5,7 +5,7 @@
 
 ## 目录与职责
 
-- `Cell.js`：单格数据结构（`isMine/revealed/flagged/protected/highlighted`）
+- `Cell.js`：单格数据结构（`isMine/revealed/flagged/protected/highlighted/monsterType/monsterCleared`）
 - `Grid.js`：网格规则与格子操作（揭示、标记、邻格信息）
 - `GridRenderer.js`：Canvas 绘制与坐标映射
 
@@ -28,6 +28,7 @@
 - `protected`：被卡牌保护的地雷可安全揭示
 - `highlighted`：用于探测类卡牌视觉提示
 - `isMine` 在后续语义上可映射为“潜伏怪物格”触发标记
+- `monsterType/monsterCleared`：怪物类型与结算状态，供战斗与渲染层复用
 
 ## 常用接口
 

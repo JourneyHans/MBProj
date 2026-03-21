@@ -12,6 +12,7 @@ import GridRenderer from '../grid/GridRenderer.js';
 import Deck from '../cards/Deck.js';
 import Hand from '../cards/Hand.js';
 import CardUI from '../cards/CardUI.js';
+import { buildMonsterEncounter, rollMonsterType } from '../data/monsterDefinitions.js';
 
 class Game {
   constructor() {
@@ -374,6 +375,16 @@ class Game {
    * @param {Cell} cell - Revealed cell
    */
   onCellRevealed(cell) {
+    if (cell && cell.isMine && cell.protected && !cell.monsterCleared) {
+      if (!cell.monsterType) {
+        cell.monsterType = rollMonsterType(this.stats.turn || 1);
+      }
+      cell.monsterCleared = true;
+      this.stats.monstersResolved++;
+      this.updateHUD();
+      this.checkRunCompletion();
+    }
+
     if (this.gridRenderer) {
       this.gridRenderer.markDirty(cell);
     }
@@ -937,16 +948,18 @@ class Game {
     if (this.activeMonsterEncounter && this.isActiveMonsterCell(cell.row, cell.col)) return;
     if (cell.monsterCleared) return;
 
-    const encounterLevel = Math.max(1, Math.floor(this.stats.turn / 3) + 1);
+    if (!cell.monsterType) {
+      cell.monsterType = rollMonsterType(this.stats.turn || 1);
+    }
+
+    const encounter = buildMonsterEncounter(cell.monsterType, this.stats.turn || 1);
     this.activeMonsterEncounter = {
       row: cell.row,
       col: cell.col,
-      hp: 2 + Math.floor(encounterLevel / 2),
-      maxHp: 2 + Math.floor(encounterLevel / 2),
-      attack: 1 + Math.floor(encounterLevel / 3)
+      ...encounter
     };
     this.showToast(
-      `怪物显形（HP:${this.activeMonsterEncounter.hp} 攻击:${this.activeMonsterEncounter.attack}）！用卡牌处理或点击该格硬闯。`,
+      `${this.activeMonsterEncounter.emoji} ${this.activeMonsterEncounter.name} 显形（T${this.activeMonsterEncounter.tier} HP:${this.activeMonsterEncounter.hp} 攻击:${this.activeMonsterEncounter.attack}）！`,
       2600,
       'error'
     );
@@ -1073,10 +1086,10 @@ class Game {
    */
   getCardEncounterDamage(card, isActiveTarget) {
     if (!card || !this.activeMonsterEncounter) return 0;
+    if (!isActiveTarget) return 0;
 
-    if (card.id === 'scout' && isActiveTarget) return 2;
-    if (card.id === 'mine_detector' && isActiveTarget) return 1;
-    return 0;
+    const damageProfile = this.activeMonsterEncounter.damageProfile || {};
+    return damageProfile[card.id] || 0;
   }
 
   /**
