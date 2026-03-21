@@ -79,6 +79,7 @@ python -m http.server 8080
 
 ## 5. 文档地图
 
+- `DEVELOPMENT_GUIDE.md`（开发执行规范）
 - `js/core/README.md`
 - `js/grid/README.md`
 - `js/cards/README.md`
