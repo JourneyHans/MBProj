@@ -367,7 +367,12 @@ class Game {
    * Handle mine tripped event - enter monster encounter flow.
    */
   onMineTripped(cell) {
-    this.startMonsterEncounter(cell || (this.grid && this.grid.trippedMine));
+    const targetCell = cell || (this.grid && this.grid.trippedMine);
+    this.startMonsterEncounter(targetCell);
+    if (targetCell && this.gridRenderer) {
+      this.gridRenderer.markDirty(targetCell);
+      this.render();
+    }
   }
 
   /**
@@ -958,6 +963,9 @@ class Game {
       col: cell.col,
       ...encounter
     };
+    if (this.gridRenderer) {
+      this.gridRenderer.markDirty(cell);
+    }
     this.showToast(
       `${this.activeMonsterEncounter.emoji} ${this.activeMonsterEncounter.name} 显形（T${this.activeMonsterEncounter.tier} HP:${this.activeMonsterEncounter.hp} 攻击:${this.activeMonsterEncounter.attack}）！`,
       2600,
