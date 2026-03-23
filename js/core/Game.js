@@ -12,7 +12,7 @@ import GridRenderer from '../grid/GridRenderer.js';
 import Deck from '../cards/Deck.js';
 import Hand from '../cards/Hand.js';
 import CardUI from '../cards/CardUI.js';
-import { buildMonsterEncounter, rollMonsterType } from '../data/monsterDefinitions.js';
+import { buildMonsterEncounter, getMonsterDefinition, rollMonsterType } from '../data/monsterDefinitions.js';
 
 class Game {
   constructor() {
@@ -191,20 +191,24 @@ class Game {
    * @param {MouseEvent} e - Mouse event
    */
   handleMouseMove(e) {
-    if (!this.targetingMode || !this.grid || !this.gridRenderer) return;
+    if (!this.grid || !this.gridRenderer) return;
 
     const rect = this.canvas.getBoundingClientRect();
     const x = (e.clientX - rect.left) * (this.canvas.width / rect.width);
     const y = (e.clientY - rect.top) * (this.canvas.height / rect.height);
 
     const cellPos = this.gridRenderer.getCellFromCoords(x, y);
+    const hoveredCell = cellPos ? this.grid.getCell(cellPos.row, cellPos.col) : null;
+    this.updateMonsterHoverInfo(hoveredCell);
+
+    if (!this.targetingMode) return;
+
     if (!cellPos) {
       this.clearTargetPreview();
       return;
     }
 
-    const cell = this.grid.getCell(cellPos.row, cellPos.col);
-    this.updateTargetPreview(cell);
+    this.updateTargetPreview(hoveredCell);
   }
 
   /**
@@ -212,6 +216,7 @@ class Game {
    */
   handleMouseLeave() {
     this.clearTargetPreview();
+    this.hideMonsterHoverInfo();
   }
 
   /**
@@ -308,6 +313,7 @@ class Game {
     this.player.extraLives = CONFIG.player.startExtraLives;
     this.player.gold = CONFIG.player.startGold;
     this.activeMonsterEncounter = null;
+    this.hideMonsterHoverInfo();
 
     // Reset deck and hand
     const startingDeck = [
@@ -901,6 +907,65 @@ class Game {
     if (this.gridRenderer) {
       this.gridRenderer.clearTargetPreview();
     }
+  }
+
+  /**
+   * Show live monster info while hovering on revealed monster cells.
+   * @param {Object|null} cell - Hovered grid cell
+   */
+  updateMonsterHoverInfo(cell) {
+    const infoEl = document.getElementById('monster-hover-info');
+    if (!infoEl) return;
+
+    if (!cell || !cell.revealed || !cell.isMine) {
+      this.hideMonsterHoverInfo();
+      return;
+    }
+
+    const definition = getMonsterDefinition(cell.monsterType || 'slime');
+    const isActive = this.activeMonsterEncounter
+      && this.isActiveMonsterCell(cell.row, cell.col);
+    const isCleared = Boolean(cell.monsterCleared);
+
+    const name = definition ? definition.name : '未知怪物';
+    const emoji = isCleared
+      ? (definition ? definition.clearedEmoji : '💀')
+      : (definition ? definition.emoji : '👾');
+
+    let statusLine = '状态：待处理';
+    let hpLine = 'HP：?/?';
+    let intentLine = '意图：未知';
+    let attackLine = '攻击：?';
+
+    if (isCleared) {
+      statusLine = '状态：已清算';
+      hpLine = 'HP：0/0';
+      intentLine = '意图：无';
+      attackLine = '攻击：0';
+    } else if (isActive && this.activeMonsterEncounter) {
+      statusLine = '状态：当前遭遇';
+      hpLine = `HP：${this.activeMonsterEncounter.hp}/${this.activeMonsterEncounter.maxHp}`;
+      intentLine = `意图：${this.activeMonsterEncounter.intent.label}`;
+      attackLine = `攻击：${this.activeMonsterEncounter.attack}`;
+    }
+
+    infoEl.innerHTML = `
+      <div class="monster-title">${emoji} ${name}</div>
+      <div class="monster-line">${statusLine}</div>
+      <div class="monster-line">${hpLine}</div>
+      <div class="monster-line">${intentLine}</div>
+      <div class="monster-line">${attackLine}</div>
+    `;
+    infoEl.style.display = 'block';
+  }
+
+  /**
+   * Hide monster hover panel.
+   */
+  hideMonsterHoverInfo() {
+    const infoEl = document.getElementById('monster-hover-info');
+    if (!infoEl) return;
+    infoEl.style.display = 'none';
   }
 
   /**
