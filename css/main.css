@@ -765,6 +765,30 @@ body {
   background: rgba(153, 27, 27, 0.95);
 }
 
+#hand-refresh-button {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  padding: 6px 12px;
+  border: 1px solid #60a5fa;
+  border-radius: 6px;
+  background: rgba(30, 58, 138, 0.92);
+  color: #dbeafe;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  z-index: 1001;
+}
+
+#hand-refresh-button:hover {
+  background: rgba(30, 64, 175, 0.95);
+}
+
+#hand-refresh-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* Mobile Responsive Styles for Cards */
 @media screen and (max-width: 768px) {
   #hand-container {
@@ -829,6 +853,13 @@ body {
     right: 8px;
     min-height: 36px;
     min-width: 56px;
+    font-size: 12px;
+  }
+
+  #hand-refresh-button {
+    top: 8px;
+    left: 8px;
+    min-height: 36px;
     font-size: 12px;
   }
 }

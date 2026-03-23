@@ -71,6 +71,9 @@ class Game {
     this.turnEffects = {
       preventCounterAttack: false
     };
+    this.turnActions = {
+      handRefreshUsed: 0
+    };
     this.activeMonsterEncounter = null;
 
     // Setup event listeners
@@ -312,12 +315,14 @@ class Game {
     this.turnPhase = 'player';
 
     // Reset card system
-    this.energy = 0;
+    const turnRegen = CONFIG.player.turnEnergyRegen || 1;
+    this.energy = Math.max(0, (CONFIG.player.startEnergy || 0) - turnRegen);
     this.player.baseLives = CONFIG.player.startBaseLives || 2;
     this.player.extraLives = CONFIG.player.startExtraLives;
     this.player.gold = CONFIG.player.startGold;
     this.player.block = 0;
     this.turnEffects.preventCounterAttack = false;
+    this.turnActions.handRefreshUsed = 0;
     this.activeMonsterEncounter = null;
     this.hideMonsterHoverInfo();
 
@@ -399,6 +404,10 @@ class Game {
    * @param {Cell} cell - Revealed cell
    */
   onCellRevealed(cell) {
+    if (cell && cell.revealed && !cell.isMine) {
+      this.gainEnergy(CONFIG.player.safeRevealEnergyGain || 0);
+    }
+
     if (cell && cell.isMine && cell.protected && !cell.monsterCleared) {
       if (!cell.monsterType) {
         cell.monsterType = rollMonsterType(this.stats.turn || 1);
@@ -1055,6 +1064,7 @@ class Game {
       col: cell.col,
       ...encounter
     };
+    this.ensureEncounterEnergyFloor();
     if (this.gridRenderer) {
       this.gridRenderer.markDirty(cell);
     }
@@ -1248,16 +1258,17 @@ class Game {
   beginPlayerTurn(reason = '') {
     this.stats.turn += 1;
     this.turnPhase = 'player';
-    this.energy = CONFIG.player.startEnergy;
+    this.energy = Math.min(this.maxEnergy, this.energy + (CONFIG.player.turnEnergyRegen || 1));
     this.player.block = 0;
     this.turnEffects.preventCounterAttack = false;
+    this.turnActions.handRefreshUsed = 0;
 
     EventBus.emit('energyChanged', {
       current: this.energy,
       max: this.maxEnergy
     });
 
-    const targetHandSize = Math.min(CONFIG.player.cardsPerTurn, this.hand.getMaxSize());
+    const targetHandSize = Math.min(CONFIG.player.maxHandSize || CONFIG.player.cardsPerTurn, this.hand.getMaxSize());
     const missingCards = Math.max(0, targetHandSize - this.hand.getHandSize());
     if (missingCards > 0) {
       this.drawCards(missingCards);
@@ -1316,6 +1327,107 @@ class Game {
     if (this.activeMonsterEncounter.status.vulnerableTurns > 0) {
       this.activeMonsterEncounter.status.vulnerableTurns -= 1;
     }
+  }
+
+  /**
+   * Gain energy and sync UI.
+   * @param {number} amount - energy amount
+   */
+  gainEnergy(amount) {
+    if (!amount || amount <= 0) return;
+    const previous = this.energy;
+    this.energy = Math.min(this.maxEnergy, this.energy + amount);
+    if (this.energy === previous) return;
+
+    EventBus.emit('energyChanged', {
+      current: this.energy,
+      max: this.maxEnergy
+    });
+  }
+
+  /**
+   * Ensure encounter starts with minimum usable energy.
+   */
+  ensureEncounterEnergyFloor() {
+    const floor = CONFIG.player.encounterMinEnergy || 2;
+    if (this.energy >= floor) return;
+    this.energy = floor;
+    EventBus.emit('energyChanged', {
+      current: this.energy,
+      max: this.maxEnergy
+    });
+    this.showToast(`遭遇保底：能量补至 ${floor}。`, 1200);
+  }
+
+  /**
+   * Check whether hand refresh action is currently allowed.
+   * @returns {{allowed: boolean, reason?: string}}
+   */
+  canUseHandRefresh() {
+    if (!this.stateManager || !this.stateManager.canInteract()) {
+      return { allowed: false, reason: '当前状态不可执行重整' };
+    }
+
+    if (!this.hand || this.hand.isEmpty()) {
+      return { allowed: false, reason: '当前没有可重整的手牌' };
+    }
+
+    if (this.targetingMode || this.pendingCardConfirmation) {
+      return { allowed: false, reason: '请先取消当前选卡' };
+    }
+
+    const maxUses = CONFIG.player.handRefreshPerTurn || 1;
+    if (this.turnActions.handRefreshUsed >= maxUses) {
+      return { allowed: false, reason: '本回合重整次数已用完' };
+    }
+
+    const cost = CONFIG.player.handRefreshCost || 1;
+    if (this.energy < cost) {
+      return { allowed: false, reason: `能量不足（需要 ${cost}，当前 ${this.energy}）` };
+    }
+
+    return { allowed: true };
+  }
+
+  /**
+   * Execute hand refresh action: discard hand and redraw.
+   * @returns {boolean} true when refresh executed
+   */
+  performHandRefresh() {
+    const validation = this.canUseHandRefresh();
+    if (!validation.allowed) {
+      this.showToast(validation.reason || '当前无法重整手牌', 1300, 'error');
+      return false;
+    }
+
+    const cost = CONFIG.player.handRefreshCost || 1;
+    this.energy = Math.max(0, this.energy - cost);
+    EventBus.emit('energyChanged', {
+      current: this.energy,
+      max: this.maxEnergy
+    });
+
+    if (this.targetingMode || this.pendingCardConfirmation) {
+      this.cancelCardInteraction();
+    }
+
+    const cardsToDiscard = this.hand.getAllCards();
+    cardsToDiscard.forEach(card => {
+      this.hand.removeCard(card.instanceId);
+      this.deck.discardCard(card);
+    });
+
+    const targetHandSize = Math.min(CONFIG.player.maxHandSize || 5, this.hand.getMaxSize());
+    const drawCount = Math.max(0, targetHandSize - this.hand.getHandSize());
+    if (drawCount > 0) {
+      this.drawCards(drawCount);
+    } else if (this.cardUI) {
+      this.cardUI.render();
+    }
+
+    this.turnActions.handRefreshUsed += 1;
+    this.showToast(`重整手牌：消耗 ${cost} 能量，已重抽。`, 1200);
+    return true;
   }
 
   /**

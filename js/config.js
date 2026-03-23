@@ -25,11 +25,16 @@ const CONFIG = {
   player: {
     startBaseLives: 2,
     startEnergy: 3,
-    maxEnergy: 10,
+    maxEnergy: 6,
     startExtraLives: 0,
     startGold: 0,
-    cardsPerTurn: 3,
-    maxHandSize: 5
+    cardsPerTurn: 5,
+    maxHandSize: 5,
+    turnEnergyRegen: 1,
+    safeRevealEnergyGain: 1,
+    encounterMinEnergy: 2,
+    handRefreshCost: 1,
+    handRefreshPerTurn: 1
   },
 
   // Progression settings

@@ -25,10 +25,12 @@ class CardUI {
     this.targetingMode = false;
     this.confirmationCardId = null;
     this.cancelButton = document.getElementById('card-cancel-button');
+    this.refreshButton = document.getElementById('hand-refresh-button');
 
     // Setup event listeners
     this.setupEventListeners();
     this.setupCancelButton();
+    this.setupRefreshButton();
   }
 
   /**
@@ -37,6 +39,7 @@ class CardUI {
   setupEventListeners() {
     EventBus.on('handUpdated', (data) => {
       this.render();
+      this.updateRefreshButtonState();
     });
 
     EventBus.on('cardSelected', (data) => {
@@ -49,14 +52,17 @@ class CardUI {
 
     EventBus.on('energyChanged', (data) => {
       this.updateEnergyIndicator(data.current, data.max);
+      this.updateRefreshButtonState();
     });
 
     EventBus.on('targetingModeStarted', (data) => {
       this.showTargetingMode(data.card);
+      this.updateRefreshButtonState();
     });
 
     EventBus.on('targetingModeEnded', () => {
       this.hideTargetingMode();
+      this.updateRefreshButtonState();
     });
 
     // Keyboard shortcuts
@@ -80,6 +86,19 @@ class CardUI {
   }
 
   /**
+   * Setup hand refresh button interaction
+   */
+  setupRefreshButton() {
+    if (!this.refreshButton) return;
+    this.refreshButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.onHandRefreshClick();
+    });
+    this.updateRefreshButtonState();
+  }
+
+  /**
    * Render the hand
    */
   render() {
@@ -100,6 +119,7 @@ class CardUI {
 
     // Update energy indicator
     this.updateEnergyIndicator(this.game.energy, this.game.maxEnergy);
+    this.updateRefreshButtonState();
   }
 
   /**
@@ -286,6 +306,7 @@ class CardUI {
 
     // Clear card selection
     this.clearHighlights();
+    this.updateRefreshButtonState();
   }
 
   /**
@@ -315,6 +336,7 @@ class CardUI {
     this.hideCancelButton();
 
     this.render();
+    this.updateRefreshButtonState();
   }
 
   /**
@@ -420,6 +442,26 @@ class CardUI {
         this.game.hand.deselectAll();
       }
     }
+  }
+
+  /**
+   * Try to perform hand refresh action.
+   */
+  onHandRefreshClick() {
+    if (!this.game || typeof this.game.performHandRefresh !== 'function') return;
+    this.game.performHandRefresh();
+    this.updateRefreshButtonState();
+  }
+
+  /**
+   * Keep hand refresh button state in sync with game conditions.
+   */
+  updateRefreshButtonState() {
+    if (!this.refreshButton || !this.game || typeof this.game.canUseHandRefresh !== 'function') return;
+
+    const validation = this.game.canUseHandRefresh();
+    this.refreshButton.disabled = !validation.allowed;
+    this.refreshButton.title = validation.allowed ? '消耗能量，弃手并重抽' : (validation.reason || '当前无法重整');
   }
 
   /**

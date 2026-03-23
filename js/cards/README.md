@@ -32,6 +32,13 @@
 - 防御/控制：`guard`、`smoke_screen`
 - 侦察/资源：`scout`、`mine_detector`、`energy_restore`
 
+### 抽牌循环动作（P3-B）
+
+- 新增手动动作：`重整手牌`
+- 规则：消耗 1 能量，弃掉当前手牌并重抽到目标手牌数
+- 限制：每回合最多 1 次
+- 抽牌堆不足时自动使用弃牌堆回洗后继续抽牌
+
 ## 卡牌效果扩展规范
 
 在 `js/data/cardDefinitions.js` 中新增卡牌定义：
