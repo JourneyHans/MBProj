@@ -43,6 +43,7 @@
 - 新增战斗设计文档：`COMBAT_DESIGN.md`（v0.1 初稿，用于 P3-B 实现对齐）
 - 新增怪物悬浮信息：鼠标停在显形怪物格上可持续查看名称/状态/HP/意图/攻击
 - 新增幕结构设计文档：`ACT_STRUCTURE_DESIGN.md`（Act-as-Grid v0.1 初稿）
+- 新增卡牌职责矩阵文档：`CARD_ROLE_MATRIX.md`（战斗击杀手段与怪物克制初稿）
 
 ---
 
