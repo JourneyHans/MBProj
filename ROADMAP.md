@@ -93,6 +93,7 @@ Phase 5: ░░░░░░░░░░░░░░░░░░░░   0%  📋
 
 `Phase 3` 目标是把“单局可玩”升级为“卡牌主导的可持续 Run 体验”：
 
+- 一局扫雷作为“一幕（Act）”的空间化关卡结构（Act-as-Grid）
 - 怪物化扫雷基础规则（Mine -> Monster）
 - 回合与资源循环（抽牌 / 能量 / 敌方意图 / 回合结算）
 - 战斗结果与失败条件重构（揭雷不即死，失误通过资源与血量结算）
@@ -152,6 +153,7 @@ Phase 5: ░░░░░░░░░░░░░░░░░░░░   0%  📋
 
 - 总览入口：`README.md`
 - 战斗设计初稿：`COMBAT_DESIGN.md`
+- 幕结构设计初稿：`ACT_STRUCTURE_DESIGN.md`
 - 开发执行规范：`DEVELOPMENT_GUIDE.md`
 - 核心模块：`js/core/README.md`
 - 网格模块：`js/grid/README.md`
