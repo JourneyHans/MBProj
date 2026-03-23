@@ -65,7 +65,11 @@ class Game {
     this.player = {
       baseLives: CONFIG.player.startBaseLives || 2,
       extraLives: CONFIG.player.startExtraLives,
-      gold: CONFIG.player.startGold
+      gold: CONFIG.player.startGold,
+      block: 0
+    };
+    this.turnEffects = {
+      preventCounterAttack: false
     };
     this.activeMonsterEncounter = null;
 
@@ -312,16 +316,21 @@ class Game {
     this.player.baseLives = CONFIG.player.startBaseLives || 2;
     this.player.extraLives = CONFIG.player.startExtraLives;
     this.player.gold = CONFIG.player.startGold;
+    this.player.block = 0;
+    this.turnEffects.preventCounterAttack = false;
     this.activeMonsterEncounter = null;
     this.hideMonsterHoverInfo();
 
     // Reset deck and hand
     const startingDeck = [
-      'scout', 'scout', 'scout',
-      'mine_detector', 'mine_detector',
-      'shield', 'shield',
-      'extra_life',
-      'energy_restore', 'energy_restore'
+      'strike', 'strike', 'strike',
+      'guard', 'guard',
+      'scout', 'scout',
+      'chain_probe',
+      'smoke_screen',
+      'armor_break',
+      'energy_restore',
+      'mine_detector'
     ];
     this.deck.initialize(startingDeck);
     this.hand.clear();
@@ -507,11 +516,14 @@ class Game {
   initializeCardSystem() {
     // Create starting deck with basic cards
     const startingDeck = [
-      'scout', 'scout', 'scout',
-      'mine_detector', 'mine_detector',
-      'shield', 'shield',
-      'extra_life',
-      'energy_restore', 'energy_restore'
+      'strike', 'strike', 'strike',
+      'guard', 'guard',
+      'scout', 'scout',
+      'chain_probe',
+      'smoke_screen',
+      'armor_break',
+      'energy_restore',
+      'mine_detector'
     ];
 
     this.deck = new Deck(startingDeck);
@@ -650,7 +662,11 @@ class Game {
       grid: this.grid,
       energy: this.energy,
       maxEnergy: this.maxEnergy,
-      player: this.player
+      player: this.player,
+      combat: {
+        activeEncounter: this.activeMonsterEncounter,
+        turnEffects: this.turnEffects
+      }
     };
 
     this.debug('Game state:', gameState);
@@ -685,6 +701,10 @@ class Game {
         target: target,
         result: result
       });
+
+      if (result.data && typeof result.data.drawCards === 'number' && result.data.drawCards > 0) {
+        this.drawCards(result.data.drawCards);
+      }
 
       // Handle highlighted cells from effects like mine_detector
       if (result.data && result.data.highlightedCells && result.data.highlightedCells.length > 0) {
@@ -834,23 +854,19 @@ class Game {
       return { valid: true };
     }
 
-    // During an active encounter, scout must target the revealed mine cell.
-    if (this.activeMonsterEncounter && card.id === 'scout') {
-      if (this.isActiveMonsterCell(cell.row, cell.col)) {
-        return { valid: true };
-      }
-      return { valid: false, reason: '请将侦察用于当前显形怪物' };
-    }
-
-    if (this.activeMonsterEncounter && card.id !== 'mine_detector') {
-      return { valid: false, reason: '请先处理当前显形怪物' };
-    }
-
-    // Special case: mine_detector can target any valid cell.
-    if (card.id === 'mine_detector') {
-      if (this.activeMonsterEncounter && !this.isActiveMonsterCell(cell.row, cell.col)) {
+    if (this.activeMonsterEncounter) {
+      if (!this.isActiveMonsterCell(cell.row, cell.col)) {
         return { valid: false, reason: '怪物战斗中请将目标指向当前显形怪物' };
       }
+      return { valid: true };
+    }
+
+    if (card.combatOnly) {
+      return { valid: false, reason: '该卡只能在显形怪物遭遇中使用' };
+    }
+
+    // Special case: mine_detector can target any valid cell in exploration phase.
+    if (card.id === 'mine_detector') {
       return { valid: true };
     }
 
@@ -985,15 +1001,22 @@ class Game {
       return;
     }
 
-    const { card, target } = data;
+    const { card, target, result } = data;
     const isActiveTarget = Boolean(target && this.isActiveMonsterCell(target.row, target.col));
+    this.applyEncounterCardEffects(result, isActiveTarget);
     const damage = this.getCardEncounterDamage(card, isActiveTarget);
     if (damage > 0) {
       this.applyDamageToActiveMonster(damage, card);
       return;
     }
 
-    this.applyMonsterCounterAttack(`怪物反击！你受到 ${this.activeMonsterEncounter.attack} 点伤害。`);
+    if (!this.turnEffects.preventCounterAttack) {
+      this.applyMonsterCounterAttack(`怪物反击！你受到 ${this.getEncounterIntentDamage(this.activeMonsterEncounter)} 点伤害。`);
+    } else {
+      this.showToast('烟幕生效：本次反击被阻断。', 1200);
+      this.turnEffects.preventCounterAttack = false;
+      this.tickEncounterStatusOnEnemyAction();
+    }
   }
 
   /**
@@ -1087,6 +1110,13 @@ class Game {
    * @param {boolean} clearAfterHit - Whether to clear encounter after damage
    */
   applyMonsterCounterAttack(message, clearAfterHit = false) {
+    if (this.turnEffects.preventCounterAttack) {
+      this.turnEffects.preventCounterAttack = false;
+      this.tickEncounterStatusOnEnemyAction();
+      this.showToast('烟幕生效：本次反击被阻断。', 1200);
+      return;
+    }
+
     const attackDamage = this.activeMonsterEncounter
       ? this.getEncounterIntentDamage(this.activeMonsterEncounter)
       : 1;
@@ -1096,6 +1126,7 @@ class Game {
     if (clearAfterHit) {
       this.activeMonsterEncounter = null;
     }
+    this.tickEncounterStatusOnEnemyAction();
     this.showToast(message, 1600, 'error');
   }
 
@@ -1104,7 +1135,21 @@ class Game {
    * @returns {boolean} true if player still alive after damage
    */
   consumeLife(damage = 1) {
-    let remainingDamage = Math.max(1, damage);
+    let remainingDamage = Math.max(0, damage);
+    if (remainingDamage <= 0) {
+      this.updateHUD();
+      return true;
+    }
+
+    if (this.player.block > 0) {
+      const absorbed = Math.min(this.player.block, remainingDamage);
+      this.player.block -= absorbed;
+      remainingDamage -= absorbed;
+      if (remainingDamage <= 0) {
+        this.updateHUD();
+        return true;
+      }
+    }
 
     while (remainingDamage > 0) {
       if (this.player.extraLives > 0) {
@@ -1175,7 +1220,25 @@ class Game {
     if (!isActiveTarget) return 0;
 
     const damageProfile = this.activeMonsterEncounter.damageProfile || {};
-    return damageProfile[card.id] || 0;
+    let damage = 0;
+
+    if (typeof card.baseDamage === 'number' && card.baseDamage > 0) {
+      damage = card.baseDamage;
+    } else {
+      damage = damageProfile[card.id] || 0;
+    }
+
+    const tag = card.attackTag;
+    if (tag && this.activeMonsterEncounter.tagModifiers && typeof this.activeMonsterEncounter.tagModifiers[tag] === 'number') {
+      damage += this.activeMonsterEncounter.tagModifiers[tag];
+    }
+
+    const encounterStatus = this.activeMonsterEncounter.status || {};
+    if ((encounterStatus.vulnerableTurns || 0) > 0) {
+      damage += 1;
+    }
+
+    return Math.max(0, damage);
   }
 
   /**
@@ -1186,6 +1249,8 @@ class Game {
     this.stats.turn += 1;
     this.turnPhase = 'player';
     this.energy = CONFIG.player.startEnergy;
+    this.player.block = 0;
+    this.turnEffects.preventCounterAttack = false;
 
     EventBus.emit('energyChanged', {
       current: this.energy,
@@ -1216,6 +1281,41 @@ class Game {
     const intentDamage = encounter.intent && encounter.intent.value;
     if (typeof intentDamage === 'number') return Math.max(1, intentDamage);
     return Math.max(1, encounter.attack || 1);
+  }
+
+  /**
+   * Apply additional encounter effects from card resolution data.
+   * @param {Object} result - card result payload
+   * @param {boolean} isActiveTarget - whether card targeted current encounter
+   */
+  applyEncounterCardEffects(result, isActiveTarget) {
+    if (!this.activeMonsterEncounter || !isActiveTarget || !result || !result.data || !result.data.encounter) {
+      return;
+    }
+
+    const encounterData = result.data.encounter;
+
+    if (typeof encounterData.applyVulnerable === 'number' && encounterData.applyVulnerable > 0) {
+      const encounterStatus = this.activeMonsterEncounter.status || { vulnerableTurns: 0 };
+      encounterStatus.vulnerableTurns = (encounterStatus.vulnerableTurns || 0) + encounterData.applyVulnerable;
+      this.activeMonsterEncounter.status = encounterStatus;
+      this.showToast(`目标易伤 +${encounterData.applyVulnerable} 回合。`, 1100);
+    }
+
+    if (encounterData.preventCounterAttack) {
+      this.turnEffects.preventCounterAttack = true;
+      this.showToast('烟幕遮蔽：本次敌方反击将失效。', 1100);
+    }
+  }
+
+  /**
+   * Tick encounter status when enemy has taken an action.
+   */
+  tickEncounterStatusOnEnemyAction() {
+    if (!this.activeMonsterEncounter || !this.activeMonsterEncounter.status) return;
+    if (this.activeMonsterEncounter.status.vulnerableTurns > 0) {
+      this.activeMonsterEncounter.status.vulnerableTurns -= 1;
+    }
   }
 
   /**

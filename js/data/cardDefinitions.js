@@ -1,6 +1,6 @@
 /**
- * Card Definitions - MVP Card Set (Phase 2)
- * Basic card definitions for the card system
+ * Card Definitions - Combat-enabled Card Set (Phase 3)
+ * Data-driven cards used by deck/hand/combat flow.
  */
 
 const CARD_DEFINITIONS = {
@@ -16,6 +16,7 @@ const CARD_DEFINITIONS = {
     type: 'scout',
     targetType: 'single',
     rarity: 'common',
+    tags: ['utility', 'reveal'],
     effect: (target, gameState) => {
       if (!target) {
         return { success: false, reason: '无效目标' };
@@ -50,6 +51,7 @@ const CARD_DEFINITIONS = {
     type: 'scout',
     targetType: 'single',
     rarity: 'common',
+    tags: ['utility', 'detect'],
     effect: (target, gameState) => {
       if (!target) {
         return { success: false, reason: '无效目标' };
@@ -106,6 +108,29 @@ const CARD_DEFINITIONS = {
     }
   },
 
+  guard: {
+    id: 'guard',
+    name: '格挡',
+    description: '获得2点格挡，优先抵消怪物伤害',
+    energyCost: 1,
+    type: 'defense',
+    targetType: 'none',
+    rarity: 'common',
+    tags: ['defense', 'block'],
+    effect: (target, gameState) => {
+      if (!gameState.player) {
+        return { success: false, reason: '玩家状态不存在' };
+      }
+
+      gameState.player.block = (gameState.player.block || 0) + 2;
+      return {
+        success: true,
+        message: '获得2点格挡',
+        data: { blockGained: 2, currentBlock: gameState.player.block }
+      };
+    }
+  },
+
   // ========================================
   // UTILITY CARDS - Functions
   // ========================================
@@ -143,6 +168,7 @@ const CARD_DEFINITIONS = {
     type: 'utility',
     targetType: 'none',
     rarity: 'common',
+    tags: ['economy', 'energy'],
     effect: (target, gameState) => {
       // Restore energy
       const restoreAmount = 2;
@@ -156,6 +182,124 @@ const CARD_DEFINITIONS = {
         success: true,
         message: `恢复了 ${restoreAmount} 点能量`,
         data: { energyRestored: restoreAmount, newEnergy }
+      };
+    }
+  },
+
+  strike: {
+    id: 'strike',
+    name: '打击',
+    description: '对显形怪物造成2点伤害',
+    energyCost: 1,
+    type: 'attack',
+    targetType: 'single',
+    rarity: 'common',
+    combatOnly: true,
+    baseDamage: 2,
+    attackTag: 'physical',
+    tags: ['attack', 'damage'],
+    effect: (target, gameState) => {
+      if (!target) {
+        return { success: false, reason: '无效目标' };
+      }
+
+      if (!gameState.combat || !gameState.combat.activeEncounter) {
+        return { success: false, reason: '当前没有显形怪物' };
+      }
+
+      return { success: true, message: '发动打击' };
+    }
+  },
+
+  chain_probe: {
+    id: 'chain_probe',
+    name: '连锁探针',
+    description: '造成1点伤害并抽1张牌',
+    energyCost: 1,
+    type: 'attack',
+    targetType: 'single',
+    rarity: 'common',
+    combatOnly: true,
+    baseDamage: 1,
+    attackTag: 'technical',
+    tags: ['attack', 'cycle'],
+    effect: (target, gameState) => {
+      if (!target) {
+        return { success: false, reason: '无效目标' };
+      }
+
+      if (!gameState.combat || !gameState.combat.activeEncounter) {
+        return { success: false, reason: '当前没有显形怪物' };
+      }
+
+      return {
+        success: true,
+        message: '连锁探针命中，准备抽牌',
+        data: { drawCards: 1 }
+      };
+    }
+  },
+
+  armor_break: {
+    id: 'armor_break',
+    name: '破甲',
+    description: '造成1点伤害并施加2回合易伤（受伤+1）',
+    energyCost: 1,
+    type: 'attack',
+    targetType: 'single',
+    rarity: 'common',
+    combatOnly: true,
+    baseDamage: 1,
+    attackTag: 'pierce',
+    tags: ['attack', 'debuff'],
+    effect: (target, gameState) => {
+      if (!target) {
+        return { success: false, reason: '无效目标' };
+      }
+
+      if (!gameState.combat || !gameState.combat.activeEncounter) {
+        return { success: false, reason: '当前没有显形怪物' };
+      }
+
+      return {
+        success: true,
+        message: '目标护甲被削弱',
+        data: {
+          encounter: {
+            applyVulnerable: 2
+          }
+        }
+      };
+    }
+  },
+
+  smoke_screen: {
+    id: 'smoke_screen',
+    name: '烟幕',
+    description: '本回合目标不反击',
+    energyCost: 1,
+    type: 'defense',
+    targetType: 'single',
+    rarity: 'uncommon',
+    combatOnly: true,
+    tags: ['control', 'counter'],
+    effect: (target, gameState) => {
+      if (!target) {
+        return { success: false, reason: '无效目标' };
+      }
+
+      if (!gameState.combat || !gameState.combat.activeEncounter) {
+        return { success: false, reason: '当前没有显形怪物' };
+      }
+
+      return {
+        success: true,
+        message: '烟幕生效，目标暂时失去反击',
+        data: {
+          encounter: {
+            preventCounterAttack: true
+          }
+        }
       };
     }
   }

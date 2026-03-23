@@ -26,11 +26,22 @@
 - 卡牌效果将从“信息辅助”扩展到“伤害/控制/防护/资源转换”
 - 回合与敌方结算接入后，卡牌成为稳定通关必需资源
 
+### 当前战斗卡（P3-B 首轮）
+
+- 输出：`strike`、`chain_probe`、`armor_break`
+- 防御/控制：`guard`、`smoke_screen`
+- 侦察/资源：`scout`、`mine_detector`、`energy_restore`
+
 ## 卡牌效果扩展规范
 
 在 `js/data/cardDefinitions.js` 中新增卡牌定义：
 
 - 必填字段：`id/name/description/energyCost/type/targetType/effect`
+- 可选战斗字段：
+  - `combatOnly`：仅能在显形怪物遭遇中使用
+  - `baseDamage`：基础伤害
+  - `attackTag`：伤害标签（用于怪物克制修正）
+  - `tags`：用途标签（便于后续奖励池和统计）
 - `effect(target, gameState)` 返回格式建议：
   - 成功：`{ success: true, message?, data? }`
   - 失败：`{ success: false, reason }`
@@ -40,7 +51,8 @@
 - `grid`
 - `energy/maxEnergy`
 - `player`
-- `combat`（规划中，战斗上下文）
+- `combat.activeEncounter`（当前遭遇）
+- `combat.turnEffects`（回合内效果，如反击抑制）
 
 ## 常用接口
 

@@ -30,6 +30,10 @@ class Card {
     this.targetType = this.definition.targetType; // 'none', 'single', 'area', 'self'
     this.effect = this.definition.effect;
     this.rarity = this.definition.rarity || 'common';
+    this.tags = Array.isArray(this.definition.tags) ? [...this.definition.tags] : [];
+    this.attackTag = this.definition.attackTag || null;
+    this.baseDamage = typeof this.definition.baseDamage === 'number' ? this.definition.baseDamage : 0;
+    this.combatOnly = Boolean(this.definition.combatOnly);
 
     // UI state
     this.selected = false;

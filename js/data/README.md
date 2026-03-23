@@ -48,4 +48,9 @@
 - 成长模板：`stats.baseHp/hpPerTier/baseAttack/attackPerTier`
 - 行为模板：`intentProfile`（用于生成 `intent`）
 - 伤害映射：`damageProfile`（卡牌对该怪物的伤害修正）
+- 克制字段：`resistanceTag/tagModifiers`（按 `attackTag` 修正伤害）
 - 刷新权重：`weights.early/mid/late`
+
+遭遇实例（`buildMonsterEncounter`）还会包含：
+
+- `status.vulnerableTurns`（易伤剩余回合）

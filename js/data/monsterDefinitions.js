@@ -21,6 +21,12 @@ const MONSTER_DEFINITIONS = {
       scout: 2,
       mine_detector: 1
     },
+    resistanceTag: 'none',
+    tagModifiers: {
+      physical: 0,
+      technical: 0,
+      pierce: 0
+    },
     intentProfile: {
       type: 'attack',
       ratio: 1.0,
@@ -49,6 +55,12 @@ const MONSTER_DEFINITIONS = {
       scout: 1,
       mine_detector: 1
     },
+    resistanceTag: 'armor',
+    tagModifiers: {
+      physical: -1,
+      technical: -1,
+      pierce: 1
+    },
     intentProfile: {
       type: 'attack',
       ratio: 1.0,
@@ -76,6 +88,12 @@ const MONSTER_DEFINITIONS = {
     damageProfile: {
       scout: 2,
       mine_detector: 1
+    },
+    resistanceTag: 'thorns',
+    tagModifiers: {
+      physical: 0,
+      technical: 1,
+      pierce: 0
     },
     intentProfile: {
       type: 'spike',
@@ -142,6 +160,13 @@ function buildMonsterEncounter(monsterId, turn = 1) {
     maxHp: hp,
     attack,
     intent,
+    resistanceTag: definition.resistanceTag || 'none',
+    tagModifiers: {
+      ...(definition.tagModifiers || {})
+    },
+    status: {
+      vulnerableTurns: 0
+    },
     damageProfile: {
       ...definition.damageProfile
     }

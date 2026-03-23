@@ -168,6 +168,7 @@ class CardUI {
    */
   getTypeLabel(type) {
     const labels = {
+      'attack': '输出',
       'scout': '侦察',
       'defense': '防御',
       'utility': '功能'

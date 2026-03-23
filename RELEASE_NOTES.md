@@ -44,6 +44,11 @@
 - 新增怪物悬浮信息：鼠标停在显形怪物格上可持续查看名称/状态/HP/意图/攻击
 - 新增幕结构设计文档：`ACT_STRUCTURE_DESIGN.md`（Act-as-Grid v0.1 初稿）
 - 新增卡牌职责矩阵文档：`CARD_ROLE_MATRIX.md`（战斗击杀手段与怪物克制初稿）
+- 新增首轮战斗卡池：`strike`、`chain_probe`、`armor_break`、`guard`、`smoke_screen`
+- 新增战斗标签机制：卡牌支持 `baseDamage/attackTag/combatOnly/tags`
+- 新增怪物克制字段：`resistanceTag/tagModifiers`，按伤害标签修正结算
+- 新增战斗状态效果：`易伤(vulnerableTurns)` 与 `烟幕反击抑制`
+- 调整起始牌组到“可稳定击杀”结构，降低“只能靠侦察卡输出”的问题
 
 ---
 
