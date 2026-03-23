@@ -166,6 +166,7 @@ Phase 5: ░░░░░░░░░░░░░░░░░░░░   0%  📋
 - 战斗设计初稿：`COMBAT_DESIGN.md`
 - 幕结构设计初稿：`ACT_STRUCTURE_DESIGN.md`
 - 卡牌职责矩阵初稿：`CARD_ROLE_MATRIX.md`
+- 能量与抽牌循环初稿：`ENERGY_DRAW_LOOP_DESIGN.md`
 - 开发执行规范：`DEVELOPMENT_GUIDE.md`
 - 核心模块：`js/core/README.md`
 - 网格模块：`js/grid/README.md`
