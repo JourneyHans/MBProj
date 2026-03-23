@@ -44,8 +44,10 @@ class Game {
       timeElapsed: 0,
       startTime: 0,
       turn: 0,
-      monstersResolved: 0
+      monstersResolved: 0,
+      hardPassStreak: 0
     };
+    this.turnPhase = 'player';
 
     // Card system
     this.deck = null;
@@ -297,6 +299,8 @@ class Game {
     this.stats.startTime = 0;
     this.stats.turn = 0;
     this.stats.monstersResolved = 0;
+    this.stats.hardPassStreak = 0;
+    this.turnPhase = 'player';
 
     // Reset card system
     this.energy = 0;
@@ -967,7 +971,7 @@ class Game {
       this.gridRenderer.markDirty(cell);
     }
     this.showToast(
-      `${this.activeMonsterEncounter.emoji} ${this.activeMonsterEncounter.name} 显形（T${this.activeMonsterEncounter.tier} HP:${this.activeMonsterEncounter.hp} 攻击:${this.activeMonsterEncounter.attack}）！`,
+      `${this.activeMonsterEncounter.emoji} ${this.activeMonsterEncounter.name} 显形（T${this.activeMonsterEncounter.tier} HP:${this.activeMonsterEncounter.hp} 意图:${this.activeMonsterEncounter.intent.label}）！`,
       2600,
       'error'
     );
@@ -977,8 +981,9 @@ class Game {
    * Resolve current monster encounter.
    * @param {string} message - Feedback toast text
    */
-  resolveMonsterEncounter(message) {
+  resolveMonsterEncounter(message, options = {}) {
     if (!this.activeMonsterEncounter || !this.grid) return;
+    const { viaHardPass = false } = options;
 
     const cell = this.grid.getCell(this.activeMonsterEncounter.row, this.activeMonsterEncounter.col);
     if (cell) {
@@ -989,6 +994,7 @@ class Game {
     }
 
     this.stats.monstersResolved++;
+    this.stats.hardPassStreak = viaHardPass ? this.stats.hardPassStreak + 1 : 0;
     this.activeMonsterEncounter = null;
     if (message) {
       this.showToast(message, 1400);
@@ -1002,9 +1008,12 @@ class Game {
    * Force pass monster encounter by taking damage.
    */
   forcePassMonsterEncounter() {
-    const survived = this.consumeLife(this.activeMonsterEncounter ? this.activeMonsterEncounter.attack : 1);
+    const hardPassPenalty = this.stats.hardPassStreak;
+    const baseDamage = this.activeMonsterEncounter ? this.getEncounterIntentDamage(this.activeMonsterEncounter) : 1;
+    const totalDamage = baseDamage + hardPassPenalty;
+    const survived = this.consumeLife(totalDamage);
     if (!survived) return;
-    this.resolveMonsterEncounter('你强行突破了怪物，但付出了生命代价。');
+    this.resolveMonsterEncounter(`你强行突破了怪物，承受 ${totalDamage} 点伤害。`, { viaHardPass: true });
   }
 
   /**
@@ -1013,7 +1022,9 @@ class Game {
    * @param {boolean} clearAfterHit - Whether to clear encounter after damage
    */
   applyMonsterCounterAttack(message, clearAfterHit = false) {
-    const attackDamage = this.activeMonsterEncounter ? this.activeMonsterEncounter.attack : 1;
+    const attackDamage = this.activeMonsterEncounter
+      ? this.getEncounterIntentDamage(this.activeMonsterEncounter)
+      : 1;
     const survived = this.consumeLife(attackDamage);
     if (!survived) return;
 
@@ -1083,7 +1094,9 @@ class Game {
     }
 
     this.showToast(`怪物受到 ${damage} 点伤害，剩余 ${this.activeMonsterEncounter.hp} HP。`, 1200);
-    this.applyMonsterCounterAttack(`怪物反击！你受到 ${this.activeMonsterEncounter.attack} 点伤害。`);
+    this.applyMonsterCounterAttack(
+      `敌方阶段：${this.activeMonsterEncounter.intent.label}，你受到 ${this.getEncounterIntentDamage(this.activeMonsterEncounter)} 点伤害。`
+    );
   }
 
   /**
@@ -1106,6 +1119,7 @@ class Game {
    */
   beginPlayerTurn(reason = '') {
     this.stats.turn += 1;
+    this.turnPhase = 'player';
     this.energy = CONFIG.player.startEnergy;
 
     EventBus.emit('energyChanged', {
@@ -1125,6 +1139,18 @@ class Game {
     if (reason) {
       this.showToast(`回合 ${this.stats.turn}：${reason}`, 900);
     }
+  }
+
+  /**
+   * Get effective damage of encounter intent.
+   * @param {Object} encounter - Active encounter
+   * @returns {number}
+   */
+  getEncounterIntentDamage(encounter) {
+    if (!encounter) return 1;
+    const intentDamage = encounter.intent && encounter.intent.value;
+    if (typeof intentDamage === 'number') return Math.max(1, intentDamage);
+    return Math.max(1, encounter.attack || 1);
   }
 
   /**

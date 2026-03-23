@@ -39,3 +39,13 @@
 - 后续新增数据建议拆分：
   - `eventDefinitions.js`
   - `rewardTables.js`
+
+## 怪物定义结构（当前）
+
+`monsterDefinitions.js` 每个怪物包含：
+
+- 基础信息：`id/name/emoji/clearedEmoji`
+- 成长模板：`stats.baseHp/hpPerTier/baseAttack/attackPerTier`
+- 行为模板：`intentProfile`（用于生成 `intent`）
+- 伤害映射：`damageProfile`（卡牌对该怪物的伤害修正）
+- 刷新权重：`weights.early/mid/late`

@@ -21,6 +21,11 @@ const MONSTER_DEFINITIONS = {
       scout: 2,
       mine_detector: 1
     },
+    intentProfile: {
+      type: 'attack',
+      ratio: 1.0,
+      bonus: 0
+    },
     weights: {
       early: 60,
       mid: 45,
@@ -44,6 +49,11 @@ const MONSTER_DEFINITIONS = {
       scout: 1,
       mine_detector: 1
     },
+    intentProfile: {
+      type: 'attack',
+      ratio: 1.0,
+      bonus: 1
+    },
     weights: {
       early: 30,
       mid: 35,
@@ -66,6 +76,11 @@ const MONSTER_DEFINITIONS = {
     damageProfile: {
       scout: 2,
       mine_detector: 1
+    },
+    intentProfile: {
+      type: 'spike',
+      ratio: 1.0,
+      bonus: 1
     },
     weights: {
       early: 10,
@@ -115,6 +130,7 @@ function buildMonsterEncounter(monsterId, turn = 1) {
   const tier = getTierByTurn(turn);
   const hp = definition.stats.baseHp + definition.stats.hpPerTier * (tier - 1);
   const attack = definition.stats.baseAttack + definition.stats.attackPerTier * (tier - 1);
+  const intent = buildMonsterIntent(definition, attack);
 
   return {
     type: definition.id,
@@ -125,9 +141,30 @@ function buildMonsterEncounter(monsterId, turn = 1) {
     hp,
     maxHp: hp,
     attack,
+    intent,
     damageProfile: {
       ...definition.damageProfile
     }
+  };
+}
+
+function buildMonsterIntent(definition, attack) {
+  const profile = definition.intentProfile || { type: 'attack', ratio: 1, bonus: 0 };
+  const value = Math.max(1, Math.round(attack * (profile.ratio || 1)) + (profile.bonus || 0));
+  const type = profile.type || 'attack';
+
+  if (type === 'spike') {
+    return {
+      type,
+      value,
+      label: `尖刺反击 ${value}`
+    };
+  }
+
+  return {
+    type: 'attack',
+    value,
+    label: `攻击 ${value}`
   };
 }
 
