@@ -2,7 +2,7 @@
 
 **项目名称**: Minesweeper Deck-Building Roguelike  
 **当前版本状态**: v0.3.0-alpha（开发主线，已切换）  
-**最后更新**: 2026-03-20
+**最后更新**: 2026-03-23
 
 ---
 
@@ -151,6 +151,7 @@ Phase 5: ░░░░░░░░░░░░░░░░░░░░   0%  📋
 ## 文档导航
 
 - 总览入口：`README.md`
+- 战斗设计初稿：`COMBAT_DESIGN.md`
 - 开发执行规范：`DEVELOPMENT_GUIDE.md`
 - 核心模块：`js/core/README.md`
 - 网格模块：`js/grid/README.md`
