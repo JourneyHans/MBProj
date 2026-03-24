@@ -31,7 +31,7 @@ const CONFIG = {
     cardsPerTurn: 5,
     maxHandSize: 5,
     turnEnergyRegen: 1,
-    safeRevealEnergyGain: 1,
+    revealActionEnergyGain: 1,
     encounterMinEnergy: 2,
     handRefreshCost: 1,
     handRefreshPerTurn: 1

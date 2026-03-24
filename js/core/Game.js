@@ -271,7 +271,14 @@ class Game {
       this.stats.startTime = Date.now();
     }
 
+    const revealedBefore = this.grid.getStats().revealedCount;
     const safe = this.grid.revealCell(row, col);
+    const revealedAfter = this.grid.getStats().revealedCount;
+
+    if (safe && revealedAfter > revealedBefore) {
+      const revealGain = CONFIG.player.revealActionEnergyGain || CONFIG.player.safeRevealEnergyGain || 1;
+      this.gainEnergy(revealGain);
+    }
 
     if (!safe) {
       // Mine hit now enters a monster handling flow.
@@ -404,10 +411,6 @@ class Game {
    * @param {Cell} cell - Revealed cell
    */
   onCellRevealed(cell) {
-    if (cell && cell.revealed && !cell.isMine) {
-      this.gainEnergy(CONFIG.player.safeRevealEnergyGain || 0);
-    }
-
     if (cell && cell.isMine && cell.protected && !cell.monsterCleared) {
       if (!cell.monsterType) {
         cell.monsterType = rollMonsterType(this.stats.turn || 1);
