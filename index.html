@@ -51,6 +51,18 @@
                 </div>
             </div>
 
+            <div id="hand-controls">
+                <button id="hand-refresh-button" type="button">重整手牌（1⚡）</button>
+                <button id="discard-pile-button" type="button" class="pile-button">
+                    弃牌堆
+                    <span id="discard-pile-count" class="pile-count">0</span>
+                </button>
+                <div id="draw-pile-indicator" class="pile-indicator">
+                    抽牌堆
+                    <span id="draw-pile-count" class="pile-count">0</span>
+                </div>
+            </div>
+
             <!-- Hand Cards -->
             <div id="hand-cards" class="hand-cards">
                 <!-- Cards will be dynamically inserted here -->
@@ -58,8 +70,17 @@
 
             <!-- Targeting Message -->
             <div id="targeting-message" style="display: none;"></div>
-            <button id="hand-refresh-button" type="button">重整手牌（1⚡）</button>
             <button id="card-cancel-button" type="button" style="display: none;">取消</button>
+
+            <div id="discard-pile-modal" style="display: none;">
+                <div class="discard-modal-panel">
+                    <div class="discard-modal-header">
+                        <span>弃牌堆</span>
+                        <button id="discard-pile-close" type="button">关闭</button>
+                    </div>
+                    <div id="discard-pile-list" class="discard-pile-list"></div>
+                </div>
+            </div>
         </div>
     </div>
 

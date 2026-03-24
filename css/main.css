@@ -555,6 +555,13 @@ body {
   box-shadow: 0 0 8px rgba(251, 191, 36, 0.5);
 }
 
+#hand-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 /* Hand Cards Container */
 .hand-cards {
   display: flex;
@@ -766,9 +773,6 @@ body {
 }
 
 #hand-refresh-button {
-  position: absolute;
-  top: 12px;
-  left: 12px;
   padding: 6px 12px;
   border: 1px solid #60a5fa;
   border-radius: 6px;
@@ -789,6 +793,114 @@ body {
   cursor: not-allowed;
 }
 
+.pile-button,
+.pile-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #334155;
+  background: #0b1220;
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.pile-button {
+  cursor: pointer;
+}
+
+.pile-button:hover {
+  border-color: #60a5fa;
+  color: #eff6ff;
+}
+
+.pile-count {
+  min-width: 22px;
+  text-align: center;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #1e293b;
+  color: #f8fafc;
+}
+
+#discard-pile-modal {
+  position: absolute;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+}
+
+.discard-modal-panel {
+  width: min(720px, 92%);
+  max-height: 72%;
+  overflow: hidden;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  background: #0f172a;
+  display: flex;
+  flex-direction: column;
+}
+
+.discard-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid #334155;
+  color: #e2e8f0;
+  font-weight: 700;
+}
+
+#discard-pile-close {
+  border: 1px solid #64748b;
+  border-radius: 6px;
+  background: #1e293b;
+  color: #e2e8f0;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+#discard-pile-close:hover {
+  border-color: #94a3b8;
+}
+
+.discard-pile-list {
+  padding: 12px;
+  overflow: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.discard-card-item {
+  border: 1px solid #334155;
+  border-radius: 8px;
+  background: #111827;
+  padding: 8px;
+}
+
+.discard-card-name {
+  font-size: 13px;
+  color: #f8fafc;
+  font-weight: 700;
+}
+
+.discard-card-meta {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.discard-empty {
+  color: #94a3b8;
+  font-size: 13px;
+}
+
 /* Mobile Responsive Styles for Cards */
 @media screen and (max-width: 768px) {
   #hand-container {
@@ -799,6 +911,10 @@ body {
   #energy-bar {
     padding: 6px 10px;
     gap: 10px;
+  }
+
+  #hand-controls {
+    gap: 8px;
   }
 
   .energy-label {
@@ -857,8 +973,12 @@ body {
   }
 
   #hand-refresh-button {
-    top: 8px;
-    left: 8px;
+    min-height: 36px;
+    font-size: 12px;
+  }
+
+  .pile-button,
+  .pile-indicator {
     min-height: 36px;
     font-size: 12px;
   }

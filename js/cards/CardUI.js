@@ -26,11 +26,18 @@ class CardUI {
     this.confirmationCardId = null;
     this.cancelButton = document.getElementById('card-cancel-button');
     this.refreshButton = document.getElementById('hand-refresh-button');
+    this.discardPileButton = document.getElementById('discard-pile-button');
+    this.discardPileCount = document.getElementById('discard-pile-count');
+    this.drawPileCount = document.getElementById('draw-pile-count');
+    this.discardPileModal = document.getElementById('discard-pile-modal');
+    this.discardPileList = document.getElementById('discard-pile-list');
+    this.discardPileClose = document.getElementById('discard-pile-close');
 
     // Setup event listeners
     this.setupEventListeners();
     this.setupCancelButton();
     this.setupRefreshButton();
+    this.setupPileInteractions();
   }
 
   /**
@@ -40,6 +47,7 @@ class CardUI {
     EventBus.on('handUpdated', (data) => {
       this.render();
       this.updateRefreshButtonState();
+      this.updatePileIndicators();
     });
 
     EventBus.on('cardSelected', (data) => {
@@ -65,9 +73,18 @@ class CardUI {
       this.updateRefreshButtonState();
     });
 
+    EventBus.on('cardDiscarded', () => this.updatePileIndicators());
+    EventBus.on('cardDrawnFromDeck', () => this.updatePileIndicators());
+    EventBus.on('deckReshuffled', () => this.updatePileIndicators());
+    EventBus.on('deckShuffled', () => this.updatePileIndicators());
+
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
+        if (this.isDiscardPileModalOpen()) {
+          this.closeDiscardPileModal();
+          return;
+        }
         this.cancelCardSelection();
       }
     });
@@ -99,6 +116,37 @@ class CardUI {
   }
 
   /**
+   * Setup discard/draw pile interaction.
+   */
+  setupPileInteractions() {
+    if (this.discardPileButton) {
+      this.discardPileButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.openDiscardPileModal();
+      });
+    }
+
+    if (this.discardPileClose) {
+      this.discardPileClose.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.closeDiscardPileModal();
+      });
+    }
+
+    if (this.discardPileModal) {
+      this.discardPileModal.addEventListener('click', (e) => {
+        if (e.target === this.discardPileModal) {
+          this.closeDiscardPileModal();
+        }
+      });
+    }
+
+    this.updatePileIndicators();
+  }
+
+  /**
    * Render the hand
    */
   render() {
@@ -120,6 +168,7 @@ class CardUI {
     // Update energy indicator
     this.updateEnergyIndicator(this.game.energy, this.game.maxEnergy);
     this.updateRefreshButtonState();
+    this.updatePileIndicators();
   }
 
   /**
@@ -465,6 +514,84 @@ class CardUI {
   }
 
   /**
+   * Update draw/discard pile counters.
+   */
+  updatePileIndicators() {
+    if (!this.game || !this.game.deck) return;
+
+    if (this.discardPileCount) {
+      this.discardPileCount.textContent = String(this.game.deck.getDiscardSize());
+    }
+
+    if (this.drawPileCount) {
+      this.drawPileCount.textContent = String(this.game.deck.getDeckSize());
+    }
+
+    if (this.isDiscardPileModalOpen()) {
+      this.renderDiscardPileList();
+    }
+  }
+
+  /**
+   * Render current discarded cards into modal.
+   */
+  renderDiscardPileList() {
+    if (!this.discardPileList || !this.game || !this.game.deck) return;
+    const cards = this.game.deck.getDiscardPileCards();
+    this.discardPileList.innerHTML = '';
+
+    if (!cards || cards.length === 0) {
+      const emptyEl = document.createElement('div');
+      emptyEl.className = 'discard-empty';
+      emptyEl.textContent = '弃牌堆当前为空。';
+      this.discardPileList.appendChild(emptyEl);
+      return;
+    }
+
+    cards.forEach((card) => {
+      const item = document.createElement('div');
+      item.className = 'discard-card-item';
+
+      const nameEl = document.createElement('div');
+      nameEl.className = 'discard-card-name';
+      nameEl.textContent = card.name || card.id;
+
+      const metaEl = document.createElement('div');
+      metaEl.className = 'discard-card-meta';
+      metaEl.textContent = `${card.energyCost}⚡ · ${this.getTypeLabel(card.type)}`;
+
+      item.appendChild(nameEl);
+      item.appendChild(metaEl);
+      this.discardPileList.appendChild(item);
+    });
+  }
+
+  /**
+   * Open discard pile modal.
+   */
+  openDiscardPileModal() {
+    if (!this.discardPileModal) return;
+    this.renderDiscardPileList();
+    this.discardPileModal.style.display = 'flex';
+  }
+
+  /**
+   * Close discard pile modal.
+   */
+  closeDiscardPileModal() {
+    if (!this.discardPileModal) return;
+    this.discardPileModal.style.display = 'none';
+  }
+
+  /**
+   * Whether discard pile modal is currently visible.
+   * @returns {boolean}
+   */
+  isDiscardPileModalOpen() {
+    return Boolean(this.discardPileModal && this.discardPileModal.style.display !== 'none');
+  }
+
+  /**
    * Animate card being played
    * @param {Card} card - Card being played
    */
@@ -503,6 +630,10 @@ class CardUI {
     EventBus.off('energyChanged');
     EventBus.off('targetingModeStarted');
     EventBus.off('targetingModeEnded');
+    EventBus.off('cardDiscarded');
+    EventBus.off('cardDrawnFromDeck');
+    EventBus.off('deckReshuffled');
+    EventBus.off('deckShuffled');
 
     this.container.innerHTML = '';
     this.cardElements.clear();
