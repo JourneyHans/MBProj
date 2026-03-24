@@ -18,7 +18,6 @@ const MONSTER_DEFINITIONS = {
       attackPerTier: 0
     },
     damageProfile: {
-      scout: 2,
       mine_detector: 1
     },
     resistanceTag: 'none',
@@ -52,7 +51,6 @@ const MONSTER_DEFINITIONS = {
       attackPerTier: 1
     },
     damageProfile: {
-      scout: 1,
       mine_detector: 1
     },
     resistanceTag: 'armor',
@@ -86,7 +84,6 @@ const MONSTER_DEFINITIONS = {
       attackPerTier: 1
     },
     damageProfile: {
-      scout: 2,
       mine_detector: 1
     },
     resistanceTag: 'thorns',

@@ -5,43 +5,8 @@
 
 const CARD_DEFINITIONS = {
   // ========================================
-  // SCOUT CARDS - Reconnaissance
+  // RECON CARDS - Information
   // ========================================
-
-  scout: {
-    id: 'scout',
-    name: '侦察',
-    description: '安全揭示一个格子',
-    energyCost: 1,
-    type: 'scout',
-    targetType: 'single',
-    rarity: 'common',
-    tags: ['utility', 'reveal'],
-    effect: (target, gameState) => {
-      if (!target) {
-        return { success: false, reason: '无效目标' };
-      }
-
-      if (target.revealed) {
-        return { success: false, reason: '目标已揭示' };
-      }
-
-      const grid = gameState.grid;
-      if (!grid) {
-        return { success: false, reason: '网格不存在' };
-      }
-
-      // If it's a mine, protect it first so it doesn't explode
-      if (target.isMine) {
-        target.protected = true;
-      }
-
-      // Use Grid's revealCell method to properly trigger events
-      grid.revealCell(target.row, target.col);
-
-      return { success: true, message: '格子已安全揭示' };
-    }
-  },
 
   mine_detector: {
     id: 'mine_detector',

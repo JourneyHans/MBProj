@@ -336,8 +336,9 @@ class Game {
     // Reset deck and hand
     const startingDeck = [
       'strike', 'strike', 'strike',
+      'strike',
       'guard', 'guard',
-      'scout', 'scout',
+      'chain_probe',
       'chain_probe',
       'smoke_screen',
       'armor_break',
@@ -529,8 +530,9 @@ class Game {
     // Create starting deck with basic cards
     const startingDeck = [
       'strike', 'strike', 'strike',
+      'strike',
       'guard', 'guard',
-      'scout', 'scout',
+      'chain_probe',
       'chain_probe',
       'smoke_screen',
       'armor_break',
