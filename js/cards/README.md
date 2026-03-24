@@ -30,7 +30,12 @@
 
 - 输出：`strike`、`chain_probe`、`armor_break`
 - 防御/控制：`guard`、`smoke_screen`
-- 侦察/资源：`scout`、`mine_detector`、`energy_restore`
+- 侦察/资源：`scout`、`energy_restore`
+
+### 卡牌复杂度策略（当前约束）
+
+- 为优先跑通整体循环，`mine_detector` 暂时下线，不纳入首轮战斗卡池
+- 侦测类复杂机制延后到 P3-C 再评估回归（避免过早分散调参与实现精力）
 
 ### 抽牌循环动作（P3-B）
 
