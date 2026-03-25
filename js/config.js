@@ -34,7 +34,16 @@ const CONFIG = {
     revealActionEnergyGain: 1,
     encounterMinEnergy: 2,
     handRefreshCost: 1,
-    handRefreshPerTurn: 1
+    handRefreshPerTurn: 1,
+    startingDeck: [
+      'strike', 'strike', 'strike', 'strike',
+      'guard', 'guard',
+      'chain_probe', 'chain_probe',
+      'smoke_screen',
+      'armor_break',
+      'energy_restore',
+      'mine_detector'
+    ]
   },
 
   // Progression settings

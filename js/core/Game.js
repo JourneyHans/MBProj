@@ -334,18 +334,7 @@ class Game {
     this.hideMonsterHoverInfo();
 
     // Reset deck and hand
-    const startingDeck = [
-      'strike', 'strike', 'strike',
-      'strike',
-      'guard', 'guard',
-      'chain_probe',
-      'chain_probe',
-      'smoke_screen',
-      'armor_break',
-      'energy_restore',
-      'mine_detector'
-    ];
-    this.deck.initialize(startingDeck);
+    this.deck.initialize(this.getStartingDeck());
     this.hand.clear();
 
     // Start first player turn
@@ -527,20 +516,8 @@ class Game {
    * Initialize the card system
    */
   initializeCardSystem() {
-    // Create starting deck with basic cards
-    const startingDeck = [
-      'strike', 'strike', 'strike',
-      'strike',
-      'guard', 'guard',
-      'chain_probe',
-      'chain_probe',
-      'smoke_screen',
-      'armor_break',
-      'energy_restore',
-      'mine_detector'
-    ];
-
-    this.deck = new Deck(startingDeck);
+    // Create starting deck with configured cards
+    this.deck = new Deck(this.getStartingDeck());
     this.hand = new Hand(CONFIG.cards.maxHandSize);
 
     // Initialize CardUI
@@ -555,6 +532,18 @@ class Game {
       current: this.energy,
       max: this.maxEnergy
     });
+  }
+
+  /**
+   * Get a fresh copy of the configured starting deck.
+   * @returns {string[]} card id list
+   */
+  getStartingDeck() {
+    const fallbackDeck = ['strike', 'guard', 'chain_probe', 'energy_restore'];
+    const configuredDeck = CONFIG.player && Array.isArray(CONFIG.player.startingDeck)
+      ? CONFIG.player.startingDeck
+      : fallbackDeck;
+    return [...configuredDeck];
   }
 
   /**

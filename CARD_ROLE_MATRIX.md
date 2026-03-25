@@ -116,13 +116,15 @@
 
 ## 5. 起始牌组建议（战斗可闭环）
 
-建议首版起始牌组（10 张）：
+当前实现起始牌组（12 张）：
 
 - `strike` x4
 - `guard` x2
-- `scout` x2
-- `chain_probe` x1
+- `chain_probe` x2
+- `smoke_screen` x1
+- `armor_break` x1
 - `energy_restore` x1
+- `mine_detector` x1
 
 目标：
 
