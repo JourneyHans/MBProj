@@ -591,20 +591,8 @@ class CardUI {
     }
 
     cards.forEach((card) => {
-      const item = document.createElement('div');
-      item.className = 'discard-card-item';
-
-      const nameEl = document.createElement('div');
-      nameEl.className = 'discard-card-name';
-      nameEl.textContent = card.name || card.id;
-
-      const metaEl = document.createElement('div');
-      metaEl.className = 'discard-card-meta';
-      metaEl.textContent = `${card.energyCost}⚡ · ${this.getTypeLabel(card.type)}`;
-
-      item.appendChild(nameEl);
-      item.appendChild(metaEl);
-      this.discardPileList.appendChild(item);
+      const cardEl = this.createReadonlyCardElement(card);
+      this.discardPileList.appendChild(cardEl);
     });
   }
 
@@ -645,21 +633,49 @@ class CardUI {
 
     const rows = Array.from(grouped.values()).sort((a, b) => a.energyCost - b.energyCost || a.name.localeCompare(b.name));
     rows.forEach((entry) => {
-      const item = document.createElement('div');
-      item.className = 'discard-card-item';
-
-      const nameEl = document.createElement('div');
-      nameEl.className = 'discard-card-name';
-      nameEl.textContent = `${entry.name} x${entry.count}`;
-
-      const metaEl = document.createElement('div');
-      metaEl.className = 'discard-card-meta';
-      metaEl.textContent = `${entry.energyCost}⚡ · ${this.getTypeLabel(entry.type)}`;
-
-      item.appendChild(nameEl);
-      item.appendChild(metaEl);
-      this.deckPileList.appendChild(item);
+      const cardEl = this.createReadonlyCardElement({
+        id: entry.name,
+        name: entry.name,
+        description: `${entry.count} 张`,
+        energyCost: entry.energyCost,
+        type: entry.type,
+        rarity: 'common'
+      }, entry.count);
+      this.deckPileList.appendChild(cardEl);
     });
+  }
+
+  /**
+   * Create a non-interactive card element with hand-style visuals.
+   * @param {Object} cardData - card display data
+   * @param {number|null} count - optional stack count
+   * @returns {HTMLElement}
+   */
+  createReadonlyCardElement(cardData, count = null) {
+    const cardEl = document.createElement('div');
+    cardEl.className = 'card card-readonly';
+    if (cardData && cardData.rarity) {
+      cardEl.classList.add(`card-${cardData.rarity}`);
+    }
+
+    const cardName = cardData && cardData.name ? cardData.name : (cardData && cardData.id ? cardData.id : '未知卡牌');
+    const cardDescription = cardData && cardData.description ? cardData.description : '无描述';
+    const cardEnergy = cardData && typeof cardData.energyCost === 'number' ? cardData.energyCost : 0;
+    const cardType = cardData && cardData.type ? this.getTypeLabel(cardData.type) : '功能';
+
+    cardEl.innerHTML = `
+      ${count && count > 1 ? `<div class="card-stack-count">x${count}</div>` : ''}
+      <div class="card-header">
+        <span class="card-energy">${cardEnergy}⚡</span>
+        <span class="card-type">${cardType}</span>
+      </div>
+      <div class="card-body">
+        <div class="card-name">${cardName}</div>
+        <div class="card-description">${cardDescription}</div>
+      </div>
+    `;
+
+    return cardEl;
   }
 
   /**
@@ -667,6 +683,7 @@ class CardUI {
    */
   openDiscardPileModal() {
     if (!this.discardPileModal) return;
+    this.closeDeckPileModal();
     this.renderDiscardPileList();
     this.discardPileModal.style.display = 'flex';
   }
@@ -692,6 +709,7 @@ class CardUI {
    */
   openDeckPileModal() {
     if (!this.deckPileModal) return;
+    this.closeDiscardPileModal();
     this.renderDeckPileList();
     this.deckPileModal.style.display = 'flex';
   }

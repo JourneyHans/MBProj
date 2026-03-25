@@ -827,18 +827,19 @@ body {
 
 #discard-pile-modal,
 #deck-pile-modal {
-  position: absolute;
+  position: fixed;
   inset: 0;
-  background: rgba(2, 6, 23, 0.72);
+  background: rgba(2, 6, 23, 0.86);
+  backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1200;
+  z-index: 3200;
 }
 
 .discard-modal-panel {
-  width: min(720px, 92%);
-  max-height: 72%;
+  width: min(1180px, 96%);
+  height: min(860px, 92%);
   overflow: hidden;
   border: 1px solid #334155;
   border-radius: 10px;
@@ -873,11 +874,11 @@ body {
 }
 
 .discard-pile-list {
-  padding: 12px;
+  padding: 16px;
   overflow: auto;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
 }
 
 .discard-card-item {
@@ -902,6 +903,29 @@ body {
 .discard-empty {
   color: #94a3b8;
   font-size: 13px;
+}
+
+.card-readonly {
+  cursor: default;
+}
+
+.card-readonly:hover {
+  transform: none;
+  box-shadow: none;
+  z-index: 1;
+}
+
+.card-stack-count {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid #475569;
+  color: #f8fafc;
+  font-size: 10px;
+  font-weight: 700;
 }
 
 /* Mobile Responsive Styles for Cards */
