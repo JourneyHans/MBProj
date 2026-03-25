@@ -258,7 +258,9 @@ class Game {
     // During a monster encounter, player must resolve current threat first.
     if (this.activeMonsterEncounter) {
       if (this.isActiveMonsterCell(row, col)) {
-        this.forcePassMonsterEncounter();
+        const encounter = this.activeMonsterEncounter;
+        const info = `${encounter.emoji} ${encounter.name} HP:${encounter.hp}/${encounter.maxHp} 意图:${encounter.intent.label}`;
+        this.showToast(info, 1600);
       } else {
         this.showToast('有怪物正在追击！请先处理显形怪物。', 1500, 'error');
       }
