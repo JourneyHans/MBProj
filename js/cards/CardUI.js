@@ -494,7 +494,7 @@ class CardUI {
   }
 
   /**
-   * Try to perform hand refresh action.
+   * Try to perform draw action.
    */
   onHandRefreshClick() {
     if (!this.game || typeof this.game.performHandRefresh !== 'function') return;
@@ -510,7 +510,7 @@ class CardUI {
 
     const validation = this.game.canUseHandRefresh();
     this.refreshButton.disabled = !validation.allowed;
-    this.refreshButton.title = validation.allowed ? '消耗能量，弃手并重抽' : (validation.reason || '当前无法重整');
+    this.refreshButton.title = validation.allowed ? '消耗能量，抽1张牌' : (validation.reason || '当前无法抽牌');
   }
 
   /**

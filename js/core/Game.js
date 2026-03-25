@@ -1365,16 +1365,20 @@ class Game {
   }
 
   /**
-   * Check whether hand refresh action is currently allowed.
+   * Check whether draw action is currently allowed.
    * @returns {{allowed: boolean, reason?: string}}
    */
   canUseHandRefresh() {
     if (!this.stateManager || !this.stateManager.canInteract()) {
-      return { allowed: false, reason: '当前状态不可执行重整' };
+      return { allowed: false, reason: '当前状态不可执行抽牌' };
     }
 
-    if (!this.hand || this.hand.isEmpty()) {
-      return { allowed: false, reason: '当前没有可重整的手牌' };
+    if (!this.hand) {
+      return { allowed: false, reason: '手牌系统未初始化' };
+    }
+
+    if (this.hand.isFull()) {
+      return { allowed: false, reason: '手牌已满，无法抽牌' };
     }
 
     if (this.targetingMode || this.pendingCardConfirmation) {
@@ -1391,17 +1395,21 @@ class Game {
       return { allowed: false, reason: `能量不足（需要 ${cost}，当前 ${this.energy}）` };
     }
 
+    if (!this.deck || this.deck.getTotalSize() <= 0) {
+      return { allowed: false, reason: '牌堆为空，无法抽牌' };
+    }
+
     return { allowed: true };
   }
 
   /**
-   * Execute hand refresh action: discard hand and redraw.
-   * @returns {boolean} true when refresh executed
+   * Execute draw action: spend energy and draw one card.
+   * @returns {boolean} true when draw executed
    */
   performHandRefresh() {
     const validation = this.canUseHandRefresh();
     if (!validation.allowed) {
-      this.showToast(validation.reason || '当前无法重整手牌', 1300, 'error');
+      this.showToast(validation.reason || '当前无法抽牌', 1300, 'error');
       return false;
     }
 
@@ -1412,26 +1420,10 @@ class Game {
       max: this.maxEnergy
     });
 
-    if (this.targetingMode || this.pendingCardConfirmation) {
-      this.cancelCardInteraction();
-    }
-
-    const cardsToDiscard = this.hand.getAllCards();
-    cardsToDiscard.forEach(card => {
-      this.hand.removeCard(card.instanceId);
-      this.deck.discardCard(card);
-    });
-
-    const targetHandSize = Math.min(CONFIG.player.maxHandSize || 5, this.hand.getMaxSize());
-    const drawCount = Math.max(0, targetHandSize - this.hand.getHandSize());
-    if (drawCount > 0) {
-      this.drawCards(drawCount);
-    } else if (this.cardUI) {
-      this.cardUI.render();
-    }
+    this.drawCards(1);
 
     this.turnActions.handRefreshUsed += 1;
-    this.showToast(`重整手牌：消耗 ${cost} 能量，已重抽。`, 1200);
+    this.showToast(`抽牌：消耗 ${cost} 能量，抽 1 张。`, 1200);
     return true;
   }
 
