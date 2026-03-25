@@ -709,7 +709,7 @@ class Game {
         this.drawCards(result.data.drawCards);
       }
 
-      // Handle highlighted cells from effects like mine_detector
+      // Handle temporary highlighted cells returned by card effects
       if (result.data && result.data.highlightedCells && result.data.highlightedCells.length > 0) {
         result.data.highlightedCells.forEach(c => this.gridRenderer.markDirty(c));
         this.scheduleHighlightCleanup(result.data.highlightedCells);
@@ -866,11 +866,6 @@ class Game {
 
     if (card.combatOnly) {
       return { valid: false, reason: '该卡只能在显形怪物遭遇中使用' };
-    }
-
-    // Special case: mine_detector can target any valid cell in exploration phase.
-    if (card.id === 'mine_detector') {
-      return { valid: true };
     }
 
     if (cell.revealed) {

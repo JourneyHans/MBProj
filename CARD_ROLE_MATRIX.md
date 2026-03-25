@@ -118,13 +118,12 @@
 
 当前实现起始牌组（12 张）：
 
-- `strike` x4
+- `strike` x5
 - `guard` x2
 - `chain_probe` x2
 - `smoke_screen` x1
 - `armor_break` x1
 - `energy_restore` x1
-- `mine_detector` x1
 
 目标：
 

@@ -5,47 +5,6 @@
 
 const CARD_DEFINITIONS = {
   // ========================================
-  // RECON CARDS - Information
-  // ========================================
-
-  mine_detector: {
-    id: 'mine_detector',
-    name: '地雷探测',
-    description: '显示3x3区域内的所有地雷',
-    energyCost: 2,
-    type: 'scout',
-    targetType: 'single',
-    rarity: 'common',
-    tags: ['utility', 'detect'],
-    effect: (target, gameState) => {
-      if (!target) {
-        return { success: false, reason: '无效目标' };
-      }
-
-      const grid = gameState.grid;
-      const neighbors = grid.getNeighbors(target.row, target.col);
-      neighbors.push(target); // Include the target cell
-
-      let minesFound = 0;
-      const highlightedCells = [];
-
-      neighbors.forEach(cell => {
-        if (cell.isMine && !cell.revealed) {
-          cell.highlighted = true;
-          highlightedCells.push(cell);
-          minesFound++;
-        }
-      });
-
-      return {
-        success: true,
-        message: `发现了 ${minesFound} 个地雷`,
-        data: { minesFound, highlightedCells }
-      };
-    }
-  },
-
-  // ========================================
   // DEFENSE CARDS - Protection
   // ========================================
 

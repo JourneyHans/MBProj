@@ -17,9 +17,7 @@ const MONSTER_DEFINITIONS = {
       baseAttack: 1,
       attackPerTier: 0
     },
-    damageProfile: {
-      mine_detector: 1
-    },
+    damageProfile: {},
     resistanceTag: 'none',
     tagModifiers: {
       physical: 0,
@@ -50,9 +48,7 @@ const MONSTER_DEFINITIONS = {
       baseAttack: 1,
       attackPerTier: 1
     },
-    damageProfile: {
-      mine_detector: 1
-    },
+    damageProfile: {},
     resistanceTag: 'armor',
     tagModifiers: {
       physical: -1,
@@ -83,9 +79,7 @@ const MONSTER_DEFINITIONS = {
       baseAttack: 2,
       attackPerTier: 1
     },
-    damageProfile: {
-      mine_detector: 1
-    },
+    damageProfile: {},
     resistanceTag: 'thorns',
     tagModifiers: {
       physical: 0,
