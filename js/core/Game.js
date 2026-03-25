@@ -254,15 +254,28 @@ class Game {
    */
   handleCellLeftClick(row, col) {
     if (!this.grid) return;
+    const clickedCell = this.grid.getCell(row, col);
 
-    // During a monster encounter, player must resolve current threat first.
-    if (this.activeMonsterEncounter) {
-      if (this.isActiveMonsterCell(row, col)) {
+    // Clicking revealed unresolved mine cells should open or inspect encounter info.
+    if (clickedCell && clickedCell.revealed && clickedCell.isMine && !clickedCell.monsterCleared) {
+      if (this.activeMonsterEncounter && this.isActiveMonsterCell(row, col)) {
         const encounter = this.activeMonsterEncounter;
         const info = `${encounter.emoji} ${encounter.name} HP:${encounter.hp}/${encounter.maxHp} 意图:${encounter.intent.label}`;
         this.showToast(info, 1600);
+        return;
+      }
+
+      if (!this.activeMonsterEncounter) {
+        this.startMonsterEncounter(clickedCell);
+        if (this.activeMonsterEncounter && this.isActiveMonsterCell(row, col)) {
+          const encounter = this.activeMonsterEncounter;
+          const info = `${encounter.emoji} ${encounter.name} HP:${encounter.hp}/${encounter.maxHp} 意图:${encounter.intent.label}`;
+          this.showToast(info, 1600);
+        }
       } else {
-        this.showToast('有怪物正在追击！请先处理显形怪物。', 1500, 'error');
+        const def = getMonsterDefinition(clickedCell.monsterType);
+        const monsterName = def ? def.name : '未知怪物';
+        this.showToast(`检测到待处理怪物：${monsterName}。可先继续探索。`, 1500);
       }
       return;
     }
@@ -1047,6 +1060,16 @@ class Game {
 
     if (!cell.monsterType) {
       cell.monsterType = rollMonsterType(this.stats.turn || 1);
+    }
+
+    if (this.activeMonsterEncounter) {
+      const def = getMonsterDefinition(cell.monsterType);
+      const monsterName = def ? def.name : '怪物';
+      if (this.gridRenderer) {
+        this.gridRenderer.markDirty(cell);
+      }
+      this.showToast(`又发现了 ${monsterName}，可先继续探索。`, 1400);
+      return;
     }
 
     const encounter = buildMonsterEncounter(cell.monsterType, this.stats.turn || 1);
