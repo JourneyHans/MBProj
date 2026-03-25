@@ -825,7 +825,8 @@ body {
   color: #f8fafc;
 }
 
-#discard-pile-modal {
+#discard-pile-modal,
+#deck-pile-modal {
   position: absolute;
   inset: 0;
   background: rgba(2, 6, 23, 0.72);
@@ -856,7 +857,8 @@ body {
   font-weight: 700;
 }
 
-#discard-pile-close {
+#discard-pile-close,
+#deck-pile-close {
   border: 1px solid #64748b;
   border-radius: 6px;
   background: #1e293b;
@@ -865,7 +867,8 @@ body {
   cursor: pointer;
 }
 
-#discard-pile-close:hover {
+#discard-pile-close:hover,
+#deck-pile-close:hover {
   border-color: #94a3b8;
 }
 

@@ -53,6 +53,10 @@
 
             <div id="hand-controls">
                 <button id="hand-refresh-button" type="button">抽牌（1⚡）</button>
+                <button id="deck-pile-button" type="button" class="pile-button">
+                    牌库
+                    <span id="deck-pile-count" class="pile-count">0</span>
+                </button>
                 <button id="discard-pile-button" type="button" class="pile-button">
                     弃牌堆
                     <span id="discard-pile-count" class="pile-count">0</span>
@@ -79,6 +83,16 @@
                         <button id="discard-pile-close" type="button">关闭</button>
                     </div>
                     <div id="discard-pile-list" class="discard-pile-list"></div>
+                </div>
+            </div>
+
+            <div id="deck-pile-modal" style="display: none;">
+                <div class="discard-modal-panel">
+                    <div class="discard-modal-header">
+                        <span>牌库总览</span>
+                        <button id="deck-pile-close" type="button">关闭</button>
+                    </div>
+                    <div id="deck-pile-list" class="discard-pile-list"></div>
                 </div>
             </div>
         </div>

@@ -26,9 +26,14 @@ class CardUI {
     this.confirmationCardId = null;
     this.cancelButton = document.getElementById('card-cancel-button');
     this.refreshButton = document.getElementById('hand-refresh-button');
+    this.deckPileButton = document.getElementById('deck-pile-button');
+    this.deckPileCount = document.getElementById('deck-pile-count');
     this.discardPileButton = document.getElementById('discard-pile-button');
     this.discardPileCount = document.getElementById('discard-pile-count');
     this.drawPileCount = document.getElementById('draw-pile-count');
+    this.deckPileModal = document.getElementById('deck-pile-modal');
+    this.deckPileList = document.getElementById('deck-pile-list');
+    this.deckPileClose = document.getElementById('deck-pile-close');
     this.discardPileModal = document.getElementById('discard-pile-modal');
     this.discardPileList = document.getElementById('discard-pile-list');
     this.discardPileClose = document.getElementById('discard-pile-close');
@@ -81,6 +86,10 @@ class CardUI {
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
+        if (this.isDeckPileModalOpen()) {
+          this.closeDeckPileModal();
+          return;
+        }
         if (this.isDiscardPileModalOpen()) {
           this.closeDiscardPileModal();
           return;
@@ -119,6 +128,30 @@ class CardUI {
    * Setup discard/draw pile interaction.
    */
   setupPileInteractions() {
+    if (this.deckPileButton) {
+      this.deckPileButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.openDeckPileModal();
+      });
+    }
+
+    if (this.deckPileClose) {
+      this.deckPileClose.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.closeDeckPileModal();
+      });
+    }
+
+    if (this.deckPileModal) {
+      this.deckPileModal.addEventListener('click', (e) => {
+        if (e.target === this.deckPileModal) {
+          this.closeDeckPileModal();
+        }
+      });
+    }
+
     if (this.discardPileButton) {
       this.discardPileButton.addEventListener('click', (e) => {
         e.preventDefault();
@@ -518,6 +551,7 @@ class CardUI {
    */
   updatePileIndicators() {
     if (!this.game || !this.game.deck) return;
+    const handSize = this.game && this.game.hand ? this.game.hand.getHandSize() : 0;
 
     if (this.discardPileCount) {
       this.discardPileCount.textContent = String(this.game.deck.getDiscardSize());
@@ -525,6 +559,14 @@ class CardUI {
 
     if (this.drawPileCount) {
       this.drawPileCount.textContent = String(this.game.deck.getDeckSize());
+    }
+
+    if (this.deckPileCount) {
+      this.deckPileCount.textContent = String(this.game.deck.getTotalSize() + handSize);
+    }
+
+    if (this.isDeckPileModalOpen()) {
+      this.renderDeckPileList();
     }
 
     if (this.isDiscardPileModalOpen()) {
@@ -567,6 +609,60 @@ class CardUI {
   }
 
   /**
+   * Render carried deck cards into modal (group by card id).
+   */
+  renderDeckPileList() {
+    if (!this.deckPileList || !this.game || !this.game.deck || !this.game.hand) return;
+    this.deckPileList.innerHTML = '';
+
+    const allCards = [
+      ...this.game.deck.getDeckCards(),
+      ...this.game.deck.getDiscardPileCards(),
+      ...this.game.hand.getCardsData()
+    ];
+
+    if (allCards.length === 0) {
+      const emptyEl = document.createElement('div');
+      emptyEl.className = 'discard-empty';
+      emptyEl.textContent = '牌库当前为空。';
+      this.deckPileList.appendChild(emptyEl);
+      return;
+    }
+
+    const grouped = new Map();
+    allCards.forEach((card) => {
+      const key = card.id || 'unknown';
+      if (!grouped.has(key)) {
+        grouped.set(key, {
+          name: card.name || key,
+          type: card.type || 'unknown',
+          energyCost: card.energyCost || 0,
+          count: 0
+        });
+      }
+      grouped.get(key).count += 1;
+    });
+
+    const rows = Array.from(grouped.values()).sort((a, b) => a.energyCost - b.energyCost || a.name.localeCompare(b.name));
+    rows.forEach((entry) => {
+      const item = document.createElement('div');
+      item.className = 'discard-card-item';
+
+      const nameEl = document.createElement('div');
+      nameEl.className = 'discard-card-name';
+      nameEl.textContent = `${entry.name} x${entry.count}`;
+
+      const metaEl = document.createElement('div');
+      metaEl.className = 'discard-card-meta';
+      metaEl.textContent = `${entry.energyCost}⚡ · ${this.getTypeLabel(entry.type)}`;
+
+      item.appendChild(nameEl);
+      item.appendChild(metaEl);
+      this.deckPileList.appendChild(item);
+    });
+  }
+
+  /**
    * Open discard pile modal.
    */
   openDiscardPileModal() {
@@ -589,6 +685,31 @@ class CardUI {
    */
   isDiscardPileModalOpen() {
     return Boolean(this.discardPileModal && this.discardPileModal.style.display !== 'none');
+  }
+
+  /**
+   * Open deck overview modal.
+   */
+  openDeckPileModal() {
+    if (!this.deckPileModal) return;
+    this.renderDeckPileList();
+    this.deckPileModal.style.display = 'flex';
+  }
+
+  /**
+   * Close deck overview modal.
+   */
+  closeDeckPileModal() {
+    if (!this.deckPileModal) return;
+    this.deckPileModal.style.display = 'none';
+  }
+
+  /**
+   * Whether deck overview modal is currently visible.
+   * @returns {boolean}
+   */
+  isDeckPileModalOpen() {
+    return Boolean(this.deckPileModal && this.deckPileModal.style.display !== 'none');
   }
 
   /**
