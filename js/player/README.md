@@ -18,6 +18,6 @@
 
 ## 与现有系统的衔接点
 
-- 当前 `extraLives/gold` 已在 `Game.player` 中使用
+- 当前 `hp/gold` 已在 `Game.player` 中使用
 - 后续可无缝迁移为 `Player` 实例并维持同名字段，减少回归风险
 - 需支持“揭雷后战斗结算”的生命与资源变动收口

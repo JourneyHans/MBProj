@@ -82,7 +82,7 @@
 - 卡牌系统接入主循环（Deck / Hand / Card / CardUI / Effect）
 - 5 张基础卡牌全部可用并接入实战逻辑：
   - `scout`、`shield`、`mine_detector`、`extra_life`、`energy_restore`
-- 能量系统与 HUD（Lives）联动
+- 能量系统与 HUD（HP）联动
 - 页面显示部署提交短哈希（git version badge）
 
 ### 🧱 工程改进

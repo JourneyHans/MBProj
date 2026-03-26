@@ -18,8 +18,8 @@
                 <span class="hud-value" id="mines-count">0</span>
             </div>
             <div class="hud-item">
-                <span class="hud-label">Lives</span>
-                <span class="hud-value" id="lives-count">0</span>
+                <span class="hud-label">HP</span>
+                <span class="hud-value" id="hp-count">0</span>
             </div>
             <div class="hud-item">
                 <span class="hud-label">Time</span>
@@ -148,8 +148,8 @@
                 document.getElementById('mines-count').textContent = data.minesRemaining;
                 const seconds = Math.floor(data.timeElapsed / 1000);
                 document.getElementById('time-elapsed').textContent = seconds;
-                if (data.extraLives !== undefined) {
-                    document.getElementById('lives-count').textContent = data.extraLives;
+                if (data.hp !== undefined) {
+                    document.getElementById('hp-count').textContent = data.hp;
                 }
             });
 

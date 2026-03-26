@@ -62,24 +62,22 @@ const CARD_DEFINITIONS = {
   extra_life: {
     id: 'extra_life',
     name: '额外生命',
-    description: '获得1点额外生命',
+    description: '恢复1点HP',
     energyCost: 2,
     type: 'utility',
     targetType: 'none',
     rarity: 'rare',
     effect: (target, gameState) => {
-      // This will be implemented when we have a player object
-      // For now, we'll store it in game stats
       if (!gameState.player) {
-        gameState.player = { extraLives: 0 };
+        gameState.player = { hp: 0 };
       }
 
-      gameState.player.extraLives = (gameState.player.extraLives || 0) + 1;
+      gameState.player.hp = (gameState.player.hp || 0) + 1;
 
       return {
         success: true,
-        message: '获得1点额外生命',
-        data: { extraLives: gameState.player.extraLives }
+        message: '恢复1点HP',
+        data: { hp: gameState.player.hp }
       };
     }
   },

@@ -63,8 +63,7 @@ class Game {
 
     // Player state
     this.player = {
-      baseLives: CONFIG.player.startBaseLives || 2,
-      extraLives: CONFIG.player.startExtraLives,
+      hp: CONFIG.player.startHp || 5,
       gold: CONFIG.player.startGold,
       block: 0
     };
@@ -345,8 +344,7 @@ class Game {
     // Reset card system
     const turnRegen = CONFIG.player.turnEnergyRegen || 1;
     this.energy = Math.max(0, (CONFIG.player.startEnergy || 0) - turnRegen);
-    this.player.baseLives = CONFIG.player.startBaseLives || 2;
-    this.player.extraLives = CONFIG.player.startExtraLives;
+    this.player.hp = CONFIG.player.startHp || 5;
     this.player.gold = CONFIG.player.startGold;
     this.player.block = 0;
     this.turnEffects.preventCounterAttack = false;
@@ -486,7 +484,7 @@ class Game {
     EventBus.emit('updateHUD', {
       minesRemaining: this.stats.minesRemaining,
       timeElapsed: this.stats.timeElapsed,
-      extraLives: this.getRemainingLives(),
+      hp: this.getCurrentHp(),
       turn: this.stats.turn,
       monstersResolved: this.stats.monstersResolved
     });
@@ -736,7 +734,7 @@ class Game {
         this.scheduleHighlightCleanup(result.data.highlightedCells);
       }
 
-      // Update HUD (lives, energy, etc.)
+      // Update HUD (hp, energy, etc.)
       this.updateHUD();
 
       // Update UI
@@ -1129,7 +1127,7 @@ class Game {
     const hardPassPenalty = this.stats.hardPassStreak;
     const baseDamage = this.activeMonsterEncounter ? this.getEncounterIntentDamage(this.activeMonsterEncounter) : 1;
     const totalDamage = baseDamage + hardPassPenalty;
-    const survived = this.consumeLife(totalDamage);
+    const survived = this.consumeHp(totalDamage);
     if (!survived) return;
     this.resolveMonsterEncounter(`你强行突破了怪物，承受 ${totalDamage} 点伤害。`, { viaHardPass: true });
   }
@@ -1150,7 +1148,7 @@ class Game {
     const attackDamage = this.activeMonsterEncounter
       ? this.getEncounterIntentDamage(this.activeMonsterEncounter)
       : 1;
-    const survived = this.consumeLife(attackDamage);
+    const survived = this.consumeHp(attackDamage);
     if (!survived) return;
 
     if (clearAfterHit) {
@@ -1161,10 +1159,10 @@ class Game {
   }
 
   /**
-   * Consume one life from extra life pool first, then base lives.
+   * Consume HP after applying block.
    * @returns {boolean} true if player still alive after damage
    */
-  consumeLife(damage = 1) {
+  consumeHp(damage = 1) {
     let remainingDamage = Math.max(0, damage);
     if (remainingDamage <= 0) {
       this.updateHUD();
@@ -1182,14 +1180,9 @@ class Game {
     }
 
     while (remainingDamage > 0) {
-      if (this.player.extraLives > 0) {
-        this.player.extraLives--;
-      } else {
-        this.player.baseLives--;
-      }
+      this.player.hp = Math.max(0, (this.player.hp || 0) - 1);
       remainingDamage--;
-
-      if (this.getRemainingLives() <= 0) {
+      if (this.getCurrentHp() <= 0) {
         this.updateHUD();
         this.gameOver();
         return false;
@@ -1201,11 +1194,11 @@ class Game {
   }
 
   /**
-   * Get total remaining survivability.
+   * Get current HP.
    * @returns {number}
    */
-  getRemainingLives() {
-    return Math.max(0, (this.player.baseLives || 0) + (this.player.extraLives || 0));
+  getCurrentHp() {
+    return Math.max(0, this.player.hp || 0);
   }
 
   /**

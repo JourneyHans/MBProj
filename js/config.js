@@ -23,10 +23,9 @@ const CONFIG = {
 
   // Player settings
   player: {
-    startBaseLives: 2,
+    startHp: 5,
     startEnergy: 3,
     maxEnergy: 6,
-    startExtraLives: 0,
     startGold: 0,
     cardsPerTurn: 5,
     maxHandSize: 5,

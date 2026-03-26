@@ -66,7 +66,7 @@ Phase 5: ░░░░░░░░░░░░░░░░░░░░   0%  📋
   - `mine_detector`：探测高亮并自动清除
   - `extra_life`：踩雷时消耗生命继续
   - `energy_restore`：恢复能量
-- HUD 扩展：Lives 显示
+- HUD 扩展：HP 显示
 - 版本角标：显示当前部署提交短哈希
 
 ---
