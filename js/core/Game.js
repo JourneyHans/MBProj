@@ -280,6 +280,12 @@ class Game {
       return;
     }
 
+    // Active encounter blocks normal revealing unless smoke screen is active.
+    if (this.activeMonsterEncounter && !this.isActiveMonsterCell(row, col) && this.isEncounterBlockingExploration()) {
+      this.showToast('当前有显形怪物阻挡探索，请先处理它或使用烟幕。', 1400, 'error');
+      return;
+    }
+
     // First click initialization
     if (!this.grid.initialized) {
       this.grid.initialize({ row, col });
@@ -1214,6 +1220,16 @@ class Game {
   }
 
   /**
+   * Determine whether current active encounter blocks revealing other cells.
+   * @returns {boolean}
+   */
+  isEncounterBlockingExploration() {
+    if (!this.activeMonsterEncounter) return false;
+    const status = this.activeMonsterEncounter.status || {};
+    return (status.smokeScreenTurns || 0) <= 0;
+  }
+
+  /**
    * Apply card damage to current active monster.
    * @param {number} damage - Damage amount
    * @param {Object} card - Card that caused damage
@@ -1321,10 +1337,20 @@ class Game {
     const encounterData = result.data.encounter;
 
     if (typeof encounterData.applyVulnerable === 'number' && encounterData.applyVulnerable > 0) {
-      const encounterStatus = this.activeMonsterEncounter.status || { vulnerableTurns: 0 };
+      const encounterStatus = this.activeMonsterEncounter.status || { vulnerableTurns: 0, smokeScreenTurns: 0 };
       encounterStatus.vulnerableTurns = (encounterStatus.vulnerableTurns || 0) + encounterData.applyVulnerable;
       this.activeMonsterEncounter.status = encounterStatus;
       this.showToast(`目标易伤 +${encounterData.applyVulnerable} 回合。`, 1100);
+    }
+
+    if (typeof encounterData.applySmokeScreenTurns === 'number' && encounterData.applySmokeScreenTurns > 0) {
+      const encounterStatus = this.activeMonsterEncounter.status || { vulnerableTurns: 0, smokeScreenTurns: 0 };
+      encounterStatus.smokeScreenTurns = Math.max(
+        encounterStatus.smokeScreenTurns || 0,
+        encounterData.applySmokeScreenTurns
+      );
+      this.activeMonsterEncounter.status = encounterStatus;
+      this.showToast(`烟幕覆盖：${encounterStatus.smokeScreenTurns} 回合内该怪物不阻挡探索。`, 1300);
     }
 
     if (encounterData.preventCounterAttack) {
@@ -1340,6 +1366,12 @@ class Game {
     if (!this.activeMonsterEncounter || !this.activeMonsterEncounter.status) return;
     if (this.activeMonsterEncounter.status.vulnerableTurns > 0) {
       this.activeMonsterEncounter.status.vulnerableTurns -= 1;
+    }
+    if (this.activeMonsterEncounter.status.smokeScreenTurns > 0) {
+      this.activeMonsterEncounter.status.smokeScreenTurns -= 1;
+      if (this.activeMonsterEncounter.status.smokeScreenTurns === 0) {
+        this.showToast('烟幕消散：该怪物再次阻挡探索。', 1100);
+      }
     }
   }
 

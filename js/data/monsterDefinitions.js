@@ -156,7 +156,8 @@ function buildMonsterEncounter(monsterId, turn = 1) {
       ...(definition.tagModifiers || {})
     },
     status: {
-      vulnerableTurns: 0
+      vulnerableTurns: 0,
+      smokeScreenTurns: 0
     },
     damageProfile: {
       ...definition.damageProfile

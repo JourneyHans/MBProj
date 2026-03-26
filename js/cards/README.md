@@ -32,6 +32,8 @@
 - 防御/控制：`guard`、`smoke_screen`
 - 资源：`energy_restore`
 
+`smoke_screen` 当前规则：覆盖目标怪物 2 回合，持续期间该怪物不阻挡探索。
+
 ### 卡牌复杂度策略（当前约束）
 
 - `scout` 已从当前战斗卡池移除，避免绕过遭遇处理主流程
@@ -70,7 +72,7 @@
 - `energy/maxEnergy`
 - `player`
 - `combat.activeEncounter`（当前遭遇）
-- `combat.turnEffects`（回合内效果，如反击抑制）
+- `combat.turnEffects`（回合内效果）
 
 ## 常用接口
 

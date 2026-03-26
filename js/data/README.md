@@ -54,3 +54,4 @@
 遭遇实例（`buildMonsterEncounter`）还会包含：
 
 - `status.vulnerableTurns`（易伤剩余回合）
+- `status.smokeScreenTurns`（烟幕覆盖剩余回合，用于控制“是否阻挡探索”）

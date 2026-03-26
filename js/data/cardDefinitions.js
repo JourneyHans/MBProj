@@ -200,7 +200,7 @@ const CARD_DEFINITIONS = {
   smoke_screen: {
     id: 'smoke_screen',
     name: '烟幕',
-    description: '本回合目标不反击',
+    description: '用烟雾覆盖目标2回合，期间可继续探索不受其阻挡',
     energyCost: 1,
     type: 'defense',
     targetType: 'single',
@@ -218,10 +218,10 @@ const CARD_DEFINITIONS = {
 
       return {
         success: true,
-        message: '烟幕生效，目标暂时失去反击',
+        message: '烟幕生效：目标被覆盖 2 回合',
         data: {
           encounter: {
-            preventCounterAttack: true
+            applySmokeScreenTurns: 2
           }
         }
       };
