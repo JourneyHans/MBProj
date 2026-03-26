@@ -63,7 +63,7 @@ class Game {
 
     // Player state
     this.player = {
-      hp: CONFIG.player.startHp || 5,
+      hp: this.getConfiguredStartHp(),
       gold: CONFIG.player.startGold,
       block: 0
     };
@@ -344,7 +344,7 @@ class Game {
     // Reset card system
     const turnRegen = CONFIG.player.turnEnergyRegen || 1;
     this.energy = Math.max(0, (CONFIG.player.startEnergy || 0) - turnRegen);
-    this.player.hp = CONFIG.player.startHp || 5;
+    this.player.hp = this.getConfiguredStartHp();
     this.player.gold = CONFIG.player.startGold;
     this.player.block = 0;
     this.turnEffects.preventCounterAttack = false;
@@ -1199,6 +1199,18 @@ class Game {
    */
   getCurrentHp() {
     return Math.max(0, this.player.hp || 0);
+  }
+
+  /**
+   * Resolve configured starting HP with safe fallback.
+   * @returns {number}
+   */
+  getConfiguredStartHp() {
+    const configured = Number(CONFIG.player && CONFIG.player.startHp);
+    if (Number.isFinite(configured) && configured > 0) {
+      return Math.floor(configured);
+    }
+    return 5;
   }
 
   /**

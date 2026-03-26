@@ -19,7 +19,7 @@
             </div>
             <div class="hud-item">
                 <span class="hud-label">HP</span>
-                <span class="hud-value" id="hp-count">0</span>
+                <span class="hud-value" id="hp-count">5</span>
             </div>
             <div class="hud-item">
                 <span class="hud-label">Time</span>
@@ -159,6 +159,13 @@
                     document.getElementById('menu').classList.remove('hidden');
                 }
             });
+
+            // Ensure HUD has a sensible initial HP before the first run starts.
+            const hpEl = document.getElementById('hp-count');
+            if (hpEl) {
+                const startHp = Number(CONFIG?.player?.startHp);
+                hpEl.textContent = Number.isFinite(startHp) && startHp > 0 ? Math.floor(startHp) : 5;
+            }
         });
 
         // Show dialog function
