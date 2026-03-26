@@ -59,9 +59,9 @@ const CARD_DEFINITIONS = {
   // UTILITY CARDS - Functions
   // ========================================
 
-  extra_life: {
-    id: 'extra_life',
-    name: '额外生命',
+  heal: {
+    id: 'heal',
+    name: '治疗',
     description: '恢复1点HP',
     energyCost: 2,
     type: 'utility',
