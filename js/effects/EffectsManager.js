@@ -21,6 +21,7 @@ class EffectsManager {
     this._raf = null;
     this._running = false;
     this._canvasScale = 1;
+    this._lastTs = 0;
   }
 
   /**
@@ -58,12 +59,7 @@ class EffectsManager {
 
   // ── Effect Spawners ───────────────────────────────────────────────────
 
-  /**
-   * Click pulse ring at a cell center.
-   * @param {number} x - Canvas-space x
-   * @param {number} y - Canvas-space y
-   * @param {object} opts - Optional tuning values
-   */
+  /** Click pulse ring at a cell center. */
   spawnCellPulse(x, y, opts = {}) {
     const maxRadius = opts.maxRadius ?? 22;
     const maxAge = opts.maxAge ?? 200;
@@ -72,24 +68,131 @@ class EffectsManager {
     const color = opts.color ?? '90, 200, 255';
 
     this.spawnEffect({
-      type: 'cellPulse',
-      x,
-      y,
-      maxAge,
+      type: 'cellPulse', x, y, maxAge,
       draw(ctx, age, life, e) {
-        const t = Math.max(0, Math.min(1, age / life));
-        const eased = 1 - Math.pow(1 - t, 2); // ease-out
+        const t = age / life;
+        const eased = 1 - (1 - t) * (1 - t);
         const radius = 4 + maxRadius * eased;
-        const alpha = baseAlpha * (1 - t);
-
         ctx.beginPath();
         ctx.arc(e.x, e.y, radius, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(${color}, ${alpha})`;
+        ctx.strokeStyle = `rgba(${color}, ${baseAlpha * (1 - t)})`;
         ctx.lineWidth = lineWidth;
         ctx.stroke();
       }
     });
   }
+
+  /** Monster spawn pop: expanding red ring + brief radial glow. */
+  spawnMonsterPop(x, y, cellSize, opts = {}) {
+    const maxAge = opts.maxAge ?? 420;
+    const color = opts.color ?? '255, 60, 60';
+    const maxR = (opts.maxRadius ?? cellSize) * 0.7;
+
+    this.spawnEffect({
+      type: 'monsterPop', x, y, maxAge,
+      draw(ctx, age, life, e) {
+        const t = age / life;
+        const easeOut = 1 - (1 - t) * (1 - t);
+
+        const glowR = maxR * 1.2 * easeOut;
+        const grad = ctx.createRadialGradient(e.x, e.y, 0, e.x, e.y, glowR);
+        grad.addColorStop(0, `rgba(${color}, ${0.35 * (1 - t)})`);
+        grad.addColorStop(1, `rgba(${color}, 0)`);
+        ctx.fillStyle = grad;
+        ctx.fillRect(e.x - glowR, e.y - glowR, glowR * 2, glowR * 2);
+
+        const ringR = 4 + maxR * easeOut;
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, ringR, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(${color}, ${0.7 * (1 - t)})`;
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      }
+    });
+  }
+
+  /** Flash a cell white (hit feedback on monster). */
+  spawnDamageFlash(x, y, size, opts = {}) {
+    const maxAge = opts.maxAge ?? 180;
+    this.spawnEffect({
+      type: 'damageFlash', x, y, maxAge, _size: size,
+      draw(ctx, age, life, e) {
+        const alpha = 0.65 * (1 - age / life);
+        ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+        ctx.fillRect(e.x, e.y, e._size, e._size);
+      }
+    });
+  }
+
+  /** Floating damage number that drifts upward and fades. */
+  spawnFloatingText(x, y, text, opts = {}) {
+    const maxAge = opts.maxAge ?? 700;
+    const color = opts.color ?? '#ffe066';
+    const fontSize = opts.fontSize ?? 18;
+    const drift = opts.drift ?? 30;
+
+    this.spawnEffect({
+      type: 'floatingText', x, y, maxAge, _text: String(text),
+      draw(ctx, age, life, e) {
+        const t = age / life;
+        const offsetY = -drift * t;
+        const alpha = t < 0.7 ? 1 : 1 - (t - 0.7) / 0.3;
+        ctx.font = `bold ${fontSize}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = color;
+        ctx.globalAlpha = Math.max(0, alpha);
+        ctx.fillText(e._text, e.x, e.y + offsetY);
+      }
+    });
+  }
+
+  /** Full-canvas red vignette flash when the player takes damage. */
+  spawnPlayerDamageFlash(opts = {}) {
+    if (!this.canvas) return;
+    const w = this.canvas.width;
+    const h = this.canvas.height;
+    const maxAge = opts.maxAge ?? 300;
+
+    this.spawnEffect({
+      type: 'playerDamageFlash', x: 0, y: 0, maxAge, _w: w, _h: h,
+      draw(ctx, age, life, e) {
+        const alpha = 0.3 * (1 - age / life);
+        const cx = e._w / 2, cy = e._h / 2;
+        const r = Math.max(cx, cy);
+        const grad = ctx.createRadialGradient(cx, cy, r * 0.4, cx, cy, r);
+        grad.addColorStop(0, 'rgba(180, 0, 0, 0)');
+        grad.addColorStop(1, `rgba(180, 0, 0, ${alpha})`);
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, e._w, e._h);
+      }
+    });
+  }
+
+  /**
+   * Set / replace a persistent pulsing border highlight for blocking cells.
+   * @param {Array<{x,y,size}>} cells - canvas-space rects
+   */
+  setBlockingHighlight(cells) {
+    this.clearPersistent('blockingHighlight');
+    if (!cells || cells.length === 0) return;
+
+    this.addPersistent({
+      type: 'blockingHighlight',
+      _cells: cells,
+      draw(ctx, ts, e) {
+        const pulse = 0.5 + 0.5 * Math.sin(ts / 400);
+        const alpha = 0.35 + 0.35 * pulse;
+        ctx.strokeStyle = `rgba(255, 70, 70, ${alpha})`;
+        ctx.lineWidth = 2.5;
+        for (const c of e._cells) {
+          ctx.strokeRect(c.x + 1, c.y + 1, c.size - 2, c.size - 2);
+        }
+      }
+    });
+  }
+
+  // ── Generic helpers ─────────────────────────────────────────────────
 
   /**
    * Generic spawner – pushes an effect descriptor into the queue.
@@ -102,17 +205,14 @@ class EffectsManager {
     }
   }
 
-  /** Remove all persistent effects of a given type. */
   clearPersistent(type) {
     this._persistent = this._persistent.filter(e => e.type !== type);
   }
 
-  /** Add a persistent effect (rendered every frame until removed). */
   addPersistent(descriptor) {
     if (descriptor) this._persistent.push(descriptor);
   }
 
-  /** Convenience: remove everything. */
   clearAll() {
     this._effects.length = 0;
     this._persistent.length = 0;
@@ -123,7 +223,8 @@ class EffectsManager {
   _tick(ts) {
     if (!this._running) return;
 
-    const dt = 16; // ~60 fps nominal, actual delta not critical for juice
+    const dt = this._lastTs ? Math.min(ts - this._lastTs, 50) : 16;
+    this._lastTs = ts;
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
     // Advance & draw transient effects
