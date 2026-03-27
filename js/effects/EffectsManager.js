@@ -39,9 +39,6 @@ class EffectsManager {
     container.appendChild(this.canvas);
     this.ctx = this.canvas.getContext('2d');
 
-    console.log('[EffectsManager] attached to', container.id,
-      'canvas:', this.canvas.width, 'x', this.canvas.height);
-
     this._running = true;
     this._tick = this._tick.bind(this);
     this._raf = requestAnimationFrame(this._tick);
@@ -64,11 +61,6 @@ class EffectsManager {
 
     this.canvas.width = gameCanvas.width;
     this.canvas.height = gameCanvas.height;
-
-    console.log('[EffectsManager] syncSize →',
-      this.canvas.width, 'x', this.canvas.height,
-      'css:', this.canvas.style.width, this.canvas.style.height,
-      'pos:', this.canvas.style.left, this.canvas.style.top);
   }
 
   /** Update the CSS transform scale so hit-positions remain consistent. */
@@ -211,39 +203,6 @@ class EffectsManager {
     });
   }
 
-  /**
-   * Self-test: spawn a large, unmissable green circle at the canvas center.
-   * Lasts 2 seconds. Used to verify the overlay is rendering.
-   */
-  selfTest() {
-    if (!this.canvas) { console.warn('[EffectsManager] selfTest: no canvas'); return; }
-    const w = this.canvas.width, h = this.canvas.height;
-    console.log('[EffectsManager] selfTest fired. canvas:', w, 'x', h);
-    if (w === 0 || h === 0) {
-      console.warn('[EffectsManager] selfTest: canvas has 0 dimensions!');
-      return;
-    }
-    this.spawnEffect({
-      type: 'selfTest', x: w / 2, y: h / 2, maxAge: 2000,
-      draw(ctx, age, life, e) {
-        const t = age / life;
-        const r = 40 + 30 * Math.sin(t * Math.PI * 4);
-        ctx.beginPath();
-        ctx.arc(e.x, e.y, r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(0, 255, 100, ${0.5 * (1 - t)})`;
-        ctx.fill();
-        ctx.lineWidth = 4;
-        ctx.strokeStyle = `rgba(255, 255, 255, ${0.8 * (1 - t)})`;
-        ctx.stroke();
-        ctx.font = 'bold 18px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = `rgba(255,255,255,${0.9 * (1 - t)})`;
-        ctx.fillText('FX OK', e.x, e.y);
-      }
-    });
-  }
-
   // ── Generic helpers ─────────────────────────────────────────────────
 
   /**
@@ -254,10 +213,6 @@ class EffectsManager {
     if (descriptor) {
       descriptor.age = 0;
       this._effects.push(descriptor);
-      console.log('[EffectsManager] spawn', descriptor.type,
-        'at', descriptor.x?.toFixed(0), descriptor.y?.toFixed(0),
-        'canvas:', this.canvas?.width, 'x', this.canvas?.height,
-        'queue:', this._effects.length);
     }
   }
 

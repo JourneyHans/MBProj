@@ -9,6 +9,7 @@
 - `GameLoop.js`：基于 `requestAnimationFrame` 的主循环
 - `StateManager.js`：状态机与状态栈（`PLAYING` / `CARD_SELECTION` 等）
 - `EventBus.js`：发布-订阅事件系统，解耦模块通信
+- （跨模块接线）`Game` 会注入并调度 `AudioManager` / `EffectsManager`
 
 ## 设计模式
 
@@ -23,6 +24,7 @@
 3. 用户输入进入 `Game.handleClick/handleTouch...`
 4. 根据状态分流到网格揭示、怪物处理或卡牌逻辑
 5. 通过 `EventBus.emit()` 通知 HUD/UI 更新
+6. 通过 `AudioManager` / `EffectsManager` 输出反馈（SFX + 动效）
 
 ### 怪物遭遇最小闭环（P3-A）
 
@@ -75,6 +77,7 @@
 - 新状态要同步更新 `canInteract()` 规则
 - 调试日志统一通过 `Game.debug()` 输出，并由 `CONFIG.debug.enabled` 控制开关
 - 玩法重构期间需保持约束：揭示到地雷后应进入可处理状态，而非直接作为唯一失败来源
+- 反馈层改动（音效/动效）应优先走 `Game` 统一触发，避免在子模块散落硬编码
 - 卡牌流程改动后要重点回归：
   - 选卡切换
   - 目标选择

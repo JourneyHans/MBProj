@@ -39,12 +39,14 @@ python -m http.server 8080
 - `js/grid/`：网格信息层（揭示/标记/邻格情报）与 Canvas 渲染
 - `js/cards/`：卡牌战术层（抽牌、能量、施放、效果执行）
 - `js/data/`：数据定义（当前为卡牌定义）
+- `js/audio/`：音效管理（`AudioManager`，howler 封装）
+- `js/effects/`：视觉特效层（`EffectsManager`，Overlay Canvas）
 - `js/config.js`：全局配置与平衡参数
 
 ### 界面与资源
 
 - `css/`：样式系统（含移动端响应式）
-- `assets/`：资源目录（预留）
+- `assets/`：资源目录（当前含 `assets/sfx/` 音效占位目录）
 - `index.html`：应用入口与基础 UI 容器
 
 ### 规划中模块（目录已预留）
@@ -84,6 +86,8 @@ python -m http.server 8080
 - `js/grid/README.md`
 - `js/cards/README.md`
 - `js/data/README.md`
+- `js/audio/README.md`
+- `js/effects/README.md`
 - `css/README.md`
 - `js/roguelike/README.md`（规划）
 - `js/player/README.md`（规划）

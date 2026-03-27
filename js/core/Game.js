@@ -372,12 +372,6 @@ class Game {
 
     this.updateHUD();
     this.resizeCanvas(); // Resize canvas for new grid
-
-    // ── FX self-test: large green circle to confirm overlay is rendering ──
-    if (this.effectsManager && typeof this.effectsManager.selfTest === 'function') {
-      this.effectsManager.selfTest();
-    }
-
     this.stateManager.transition(CONFIG.gameState.PLAYING);
   }
 
@@ -1758,12 +1752,8 @@ class Game {
   }
 
   triggerCellClickPulse(row, col) {
-    if (!this.effectsManager || !this.gridRenderer) {
-      console.warn('[Game] triggerCellClickPulse: missing effectsManager or gridRenderer');
-      return;
-    }
+    if (!this.effectsManager || !this.gridRenderer) return;
     const { cx, cy, size } = this._cellCanvasRect(row, col);
-    console.log('[Game] triggerCellClickPulse', row, col, '→ canvas', cx.toFixed(0), cy.toFixed(0));
     this.effectsManager.spawnCellPulse(cx, cy, {
       maxRadius: Math.max(16, size * 0.55),
       maxAge: 220
