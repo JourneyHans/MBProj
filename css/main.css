@@ -736,7 +736,7 @@ body {
 }
 
 #targeting-message {
-  position: absolute;
+  position: fixed;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
@@ -746,8 +746,10 @@ body {
   border-radius: 8px;
   font-size: 16px;
   font-weight: bold;
-  z-index: 1000;
+  z-index: 3600;
   pointer-events: none;
+  max-width: min(88vw, 540px);
+  text-align: center;
 }
 
 #targeting-message.error {
