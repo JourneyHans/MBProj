@@ -116,11 +116,16 @@
         </div>
     </div>
 
+    <!-- Howler.js (audio library, exposes window.Howl) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js" crossorigin="anonymous"></script>
+
     <!-- Scripts -->
     <script type="module">
         import Game from './js/core/Game.js';
         import EventBus from './js/core/EventBus.js';
         import CONFIG from './js/config.js';
+        import AudioManager from './js/audio/AudioManager.js';
+        import EffectsManager from './js/effects/EffectsManager.js';
 
         // Global game instance
         let game;
@@ -128,7 +133,17 @@
         // Initialize game when DOM is loaded
         document.addEventListener('DOMContentLoaded', () => {
             const canvas = document.getElementById('game-canvas');
+
+            // Initialize AudioManager (gracefully no-ops if Howler CDN failed)
+            AudioManager.init();
+
+            // Initialize EffectsManager overlay canvas
+            const effectsFx = new EffectsManager();
+            effectsFx.attach(document.getElementById('canvas-container'));
+
             game = new Game();
+            game.audioManager = AudioManager;
+            game.effectsManager = effectsFx;
             game.initialize(canvas);
             initGitVersionBadge();
 

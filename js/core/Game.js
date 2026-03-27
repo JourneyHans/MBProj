@@ -28,6 +28,10 @@ class Game {
     this.canvas = null;
     this.ctx = null;
 
+    // Juice managers (injected from index.html before initialize())
+    this.audioManager = null;
+    this.effectsManager = null;
+
     // Touch handling
     this.touchStartTime = 0;
     this.touchTimer = null;
@@ -351,6 +355,9 @@ class Game {
     this.turnActions.handRefreshUsed = 0;
     this.activeMonsterEncounter = null;
     this.hideMonsterHoverInfo();
+
+    // Clear visual effects from previous game
+    if (this.effectsManager) this.effectsManager.clearAll();
 
     // Reset deck and hand
     this.deck.initialize(this.getStartingDeck());
@@ -1724,9 +1731,14 @@ class Game {
       this.canvas.style.width = `${newWidth}px`;
       this.canvas.style.height = `${newHeight}px`;
     } else {
-      // Reset to natural size
       this.canvas.style.width = '';
       this.canvas.style.height = '';
+    }
+
+    // Keep effects overlay in sync
+    if (this.effectsManager) {
+      this.effectsManager.syncSize(this.canvas);
+      this.effectsManager.setScale(this.canvasScale);
     }
   }
 }
