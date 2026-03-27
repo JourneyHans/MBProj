@@ -56,7 +56,40 @@ class EffectsManager {
     this._canvasScale = scale;
   }
 
-  // ── Effect Spawners (to be fleshed out in subsequent steps) ──────────
+  // ── Effect Spawners ───────────────────────────────────────────────────
+
+  /**
+   * Click pulse ring at a cell center.
+   * @param {number} x - Canvas-space x
+   * @param {number} y - Canvas-space y
+   * @param {object} opts - Optional tuning values
+   */
+  spawnCellPulse(x, y, opts = {}) {
+    const maxRadius = opts.maxRadius ?? 22;
+    const maxAge = opts.maxAge ?? 200;
+    const baseAlpha = opts.alpha ?? 0.55;
+    const lineWidth = opts.lineWidth ?? 2.5;
+    const color = opts.color ?? '90, 200, 255';
+
+    this.spawnEffect({
+      type: 'cellPulse',
+      x,
+      y,
+      maxAge,
+      draw(ctx, age, life, e) {
+        const t = Math.max(0, Math.min(1, age / life));
+        const eased = 1 - Math.pow(1 - t, 2); // ease-out
+        const radius = 4 + maxRadius * eased;
+        const alpha = baseAlpha * (1 - t);
+
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, radius, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(${color}, ${alpha})`;
+        ctx.lineWidth = lineWidth;
+        ctx.stroke();
+      }
+    });
+  }
 
   /**
    * Generic spawner – pushes an effect descriptor into the queue.

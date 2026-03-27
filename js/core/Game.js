@@ -186,6 +186,8 @@ class Game {
 
     const cellPos = this.gridRenderer.getCellFromCoords(x, y);
     if (cellPos) {
+      this.triggerCellClickPulse(cellPos.row, cellPos.col);
+
       // If in targeting mode, handle target selection
       if (this.targetingMode) {
         const cell = this.grid.getCell(cellPos.row, cellPos.col);
@@ -1606,6 +1608,8 @@ class Game {
       );
 
       if (cellPos) {
+        this.triggerCellClickPulse(cellPos.row, cellPos.col);
+
         // If in targeting mode, handle target selection
         if (this.targetingMode) {
           const cell = this.grid.getCell(cellPos.row, cellPos.col);
@@ -1660,6 +1664,25 @@ class Game {
     }
 
     this.touchPosition = null;
+  }
+
+  /**
+   * Trigger a pulse effect at a specific grid cell center.
+   * @param {number} row - Row index
+   * @param {number} col - Column index
+   */
+  triggerCellClickPulse(row, col) {
+    if (!this.effectsManager || !this.gridRenderer) return;
+
+    const cellSize = this.gridRenderer.cellSize;
+    const cellGap = this.gridRenderer.cellGap;
+    const x = cellGap + col * (cellSize + cellGap) + cellSize / 2;
+    const y = cellGap + row * (cellSize + cellGap) + cellSize / 2;
+
+    this.effectsManager.spawnCellPulse(x, y, {
+      maxRadius: Math.max(16, cellSize * 0.55),
+      maxAge: 220
+    });
   }
 
   /**
