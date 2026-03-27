@@ -28,6 +28,10 @@ class Game {
     this.canvas = null;
     this.ctx = null;
 
+    // Juice managers (injected from index.html before initialize())
+    this.audioManager = null;
+    this.effectsManager = null;
+
     // Touch handling
     this.touchStartTime = 0;
     this.touchTimer = null;
@@ -182,6 +186,8 @@ class Game {
 
     const cellPos = this.gridRenderer.getCellFromCoords(x, y);
     if (cellPos) {
+      this.triggerCellClickPulse(cellPos.row, cellPos.col);
+
       // If in targeting mode, handle target selection
       if (this.targetingMode) {
         const cell = this.grid.getCell(cellPos.row, cellPos.col);
@@ -281,6 +287,7 @@ class Game {
 
     // Any blocking encounter on board prevents normal revealing.
     if (this.hasBlockingEncounterOnBoard()) {
+      this._playSound('blocked');
       this.showToast('当前有显形怪物阻挡探索，请点击怪物并处理它。', 1400, 'error');
       return;
     }
@@ -298,6 +305,7 @@ class Game {
     if (safe && revealedAfter > revealedBefore) {
       const revealGain = CONFIG.player.revealActionEnergyGain || CONFIG.player.safeRevealEnergyGain || 1;
       this.gainEnergy(revealGain);
+      this._playSound('reveal');
     }
 
     if (!safe) {
@@ -352,6 +360,9 @@ class Game {
     this.activeMonsterEncounter = null;
     this.hideMonsterHoverInfo();
 
+    // Clear visual effects from previous game
+    if (this.effectsManager) this.effectsManager.clearAll();
+
     // Reset deck and hand
     this.deck.initialize(this.getStartingDeck());
     this.hand.clear();
@@ -361,6 +372,12 @@ class Game {
 
     this.updateHUD();
     this.resizeCanvas(); // Resize canvas for new grid
+
+    // ── FX self-test: large green circle to confirm overlay is rendering ──
+    if (this.effectsManager && typeof this.effectsManager.selfTest === 'function') {
+      this.effectsManager.selfTest();
+    }
+
     this.stateManager.transition(CONFIG.gameState.PLAYING);
   }
 
@@ -468,6 +485,7 @@ class Game {
    * Victory
    */
   victory() {
+    this._playSound('victory');
     this.stateManager.transition(CONFIG.gameState.VICTORY);
     this.showVictoryDialog();
   }
@@ -718,6 +736,7 @@ class Game {
       this.deck.discardCard(card);
 
       // Emit card played event
+      this._playSound('cardPlay');
       EventBus.emit('cardPlayed', {
         card: card,
         target: target,
@@ -1072,6 +1091,8 @@ class Game {
       if (this.gridRenderer) {
         this.gridRenderer.markDirty(cell);
       }
+      this._playSound('monsterSpawn');
+      this._refreshBlockingHighlight();
       this.showToast(`又发现了 ${monsterName}，它会阻挡探索。`, 1400);
       return;
     }
@@ -1086,6 +1107,15 @@ class Game {
     if (this.gridRenderer) {
       this.gridRenderer.markDirty(cell);
     }
+
+    // ── Juice: monster spawn pop + SFX ──
+    if (this.effectsManager && this.gridRenderer) {
+      const { cx, cy, size } = this._cellCanvasRect(cell.row, cell.col);
+      this.effectsManager.spawnMonsterPop(cx, cy, size);
+    }
+    this._playSound('monsterSpawn');
+    this._refreshBlockingHighlight();
+
     this.showToast(
       `${this.activeMonsterEncounter.emoji} ${this.activeMonsterEncounter.name} 显形（T${this.activeMonsterEncounter.tier} HP:${this.activeMonsterEncounter.hp} 意图:${this.activeMonsterEncounter.intent.label}）！`,
       2600,
@@ -1112,6 +1142,10 @@ class Game {
     this.stats.monstersResolved++;
     this.stats.hardPassStreak = viaHardPass ? this.stats.hardPassStreak + 1 : 0;
     this.activeMonsterEncounter = null;
+
+    // ── Juice: refresh blocking highlight after encounter cleared ──
+    this._refreshBlockingHighlight();
+
     if (message) {
       this.showToast(message, 1400);
     }
@@ -1179,11 +1213,17 @@ class Game {
       }
     }
 
+    // ── Juice: player damage vignette ──
+    if (remainingDamage > 0 && this.effectsManager) {
+      this.effectsManager.spawnPlayerDamageFlash();
+    }
+
     while (remainingDamage > 0) {
       this.player.hp = Math.max(0, (this.player.hp || 0) - 1);
       remainingDamage--;
       if (this.getCurrentHp() <= 0) {
         this.updateHUD();
+        this._playSound('gameOver');
         this.gameOver();
         return false;
       }
@@ -1266,8 +1306,21 @@ class Game {
   applyDamageToActiveMonster(damage, card) {
     if (!this.activeMonsterEncounter) return;
 
+    // ── Juice: flash white + floating damage number ──
+    if (this.effectsManager && this.gridRenderer) {
+      const { x, y, cx, cy, size } = this._cellCanvasRect(
+        this.activeMonsterEncounter.row, this.activeMonsterEncounter.col
+      );
+      this.effectsManager.spawnDamageFlash(x, y, size);
+      this.effectsManager.spawnFloatingText(cx, cy - size * 0.3, `-${damage}`, {
+        color: '#ffe066', fontSize: Math.max(16, size * 0.45)
+      });
+    }
+    this._playSound('hit');
+
     this.activeMonsterEncounter.hp = Math.max(0, this.activeMonsterEncounter.hp - damage);
     if (this.activeMonsterEncounter.hp <= 0) {
+      this._playSound('kill');
       this.resolveMonsterEncounter(`你用【${card.name}】击败了显形怪物。`);
       return;
     }
@@ -1402,6 +1455,7 @@ class Game {
         this.showToast('烟幕消散：该怪物再次阻挡探索。', 1100);
       }
     }
+    this._refreshBlockingHighlight();
   }
 
   /**
@@ -1599,6 +1653,8 @@ class Game {
       );
 
       if (cellPos) {
+        this.triggerCellClickPulse(cellPos.row, cellPos.col);
+
         // If in targeting mode, handle target selection
         if (this.targetingMode) {
           const cell = this.grid.getCell(cellPos.row, cellPos.col);
@@ -1653,6 +1709,65 @@ class Game {
     }
 
     this.touchPosition = null;
+  }
+
+  /**
+   * Trigger a pulse effect at a specific grid cell center.
+   * @param {number} row - Row index
+   * @param {number} col - Column index
+   */
+  // ── Juice helpers ──────────────────────────────────────────────────
+
+  /** Play a named SFX via AudioManager (silently no-ops if missing). */
+  _playSound(name) {
+    if (this.audioManager) this.audioManager.play(name);
+  }
+
+  /**
+   * Recalculate which cells should show a blocking highlight and
+   * push the result to EffectsManager as a persistent overlay.
+   */
+  _refreshBlockingHighlight() {
+    if (!this.effectsManager || !this.gridRenderer || !this.grid) {
+      return;
+    }
+    const blocking = [];
+    for (let r = 0; r < this.grid.rows; r++) {
+      for (let c = 0; c < this.grid.cols; c++) {
+        const cell = this.grid.getCell(r, c);
+        if (!cell || !cell.revealed || !cell.isMine || cell.monsterCleared) continue;
+
+        const isActive = this.activeMonsterEncounter &&
+          this.isActiveMonsterCell(r, c);
+        if (isActive && !this.isEncounterBlockingExploration()) continue;
+
+        const rect = this._cellCanvasRect(r, c);
+        blocking.push({ x: rect.x, y: rect.y, size: rect.size });
+      }
+    }
+    this.effectsManager.setBlockingHighlight(blocking);
+  }
+
+  /** Convert grid row/col to canvas-space pixel coordinates (top-left + center). */
+  _cellCanvasRect(row, col) {
+    const s = this.gridRenderer.cellSize;
+    const g = this.gridRenderer.cellGap;
+    const x = g + col * (s + g);
+    const y = g + row * (s + g);
+    return { x, y, cx: x + s / 2, cy: y + s / 2, size: s };
+  }
+
+  triggerCellClickPulse(row, col) {
+    if (!this.effectsManager || !this.gridRenderer) {
+      console.warn('[Game] triggerCellClickPulse: missing effectsManager or gridRenderer');
+      return;
+    }
+    const { cx, cy, size } = this._cellCanvasRect(row, col);
+    console.log('[Game] triggerCellClickPulse', row, col, '→ canvas', cx.toFixed(0), cy.toFixed(0));
+    this.effectsManager.spawnCellPulse(cx, cy, {
+      maxRadius: Math.max(16, size * 0.55),
+      maxAge: 220
+    });
   }
 
   /**
@@ -1724,9 +1839,14 @@ class Game {
       this.canvas.style.width = `${newWidth}px`;
       this.canvas.style.height = `${newHeight}px`;
     } else {
-      // Reset to natural size
       this.canvas.style.width = '';
       this.canvas.style.height = '';
+    }
+
+    // Keep effects overlay in sync
+    if (this.effectsManager) {
+      this.effectsManager.syncSize(this.canvas);
+      this.effectsManager.setScale(this.canvasScale);
     }
   }
 }
