@@ -34,7 +34,7 @@ class EffectsManager {
     this.canvas = document.createElement('canvas');
     this.canvas.id = 'effects-canvas';
     this.canvas.style.cssText =
-      'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10;';
+      'position:absolute;top:0;left:0;pointer-events:none;z-index:30;';
     container.appendChild(this.canvas);
     this.ctx = this.canvas.getContext('2d');
 
@@ -46,10 +46,22 @@ class EffectsManager {
   /** Sync overlay size with the game canvas underneath. */
   syncSize(gameCanvas) {
     if (!this.canvas || !gameCanvas) return;
+
+    const container = gameCanvas.parentElement;
+    if (!container) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const canvasRect = gameCanvas.getBoundingClientRect();
+
+    // Lock overlay to the exact on-screen rectangle of the real game canvas.
+    this.canvas.style.left = `${canvasRect.left - containerRect.left}px`;
+    this.canvas.style.top = `${canvasRect.top - containerRect.top}px`;
+    this.canvas.style.width = `${canvasRect.width}px`;
+    this.canvas.style.height = `${canvasRect.height}px`;
+
+    // Keep drawing coordinates in unscaled canvas-space for stable effect math.
     this.canvas.width = gameCanvas.width;
     this.canvas.height = gameCanvas.height;
-    this.canvas.style.width = gameCanvas.style.width || '';
-    this.canvas.style.height = gameCanvas.style.height || '';
   }
 
   /** Update the CSS transform scale so hit-positions remain consistent. */
