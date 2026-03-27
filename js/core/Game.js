@@ -274,14 +274,14 @@ class Game {
       } else {
         const def = getMonsterDefinition(clickedCell.monsterType);
         const monsterName = def ? def.name : '未知怪物';
-        this.showToast(`检测到待处理怪物：${monsterName}。可先继续探索。`, 1500);
+        this.showToast(`检测到待处理怪物：${monsterName}。请先处理当前阻挡怪物。`, 1500);
       }
       return;
     }
 
-    // Active encounter blocks normal revealing unless smoke screen is active.
-    if (this.activeMonsterEncounter && !this.isActiveMonsterCell(row, col) && this.isEncounterBlockingExploration()) {
-      this.showToast('当前有显形怪物阻挡探索，请先处理它或使用烟幕。', 1400, 'error');
+    // Any blocking encounter on board prevents normal revealing.
+    if (this.hasBlockingEncounterOnBoard()) {
+      this.showToast('当前有显形怪物阻挡探索，请点击怪物并处理它。', 1400, 'error');
       return;
     }
 
@@ -1072,7 +1072,7 @@ class Game {
       if (this.gridRenderer) {
         this.gridRenderer.markDirty(cell);
       }
-      this.showToast(`又发现了 ${monsterName}，可先继续探索。`, 1400);
+      this.showToast(`又发现了 ${monsterName}，它会阻挡探索。`, 1400);
       return;
     }
 
@@ -1232,6 +1232,30 @@ class Game {
     if (!this.activeMonsterEncounter) return false;
     const status = this.activeMonsterEncounter.status || {};
     return (status.smokeScreenTurns || 0) <= 0;
+  }
+
+  /**
+   * Determine if any revealed unresolved monster currently blocks exploration.
+   * Active encounter can be temporarily non-blocking under smoke, but any other
+   * unresolved revealed monster still blocks.
+   * @returns {boolean}
+   */
+  hasBlockingEncounterOnBoard() {
+    if (!this.grid) return false;
+    const cells = this.grid.getAllCells();
+    for (let r = 0; r < this.grid.rows; r++) {
+      for (let c = 0; c < this.grid.cols; c++) {
+        const cell = cells[r][c];
+        if (!cell.revealed || !cell.isMine || cell.monsterCleared) continue;
+
+        const isActive = this.isActiveMonsterCell(r, c);
+        if (isActive && !this.isEncounterBlockingExploration()) {
+          continue;
+        }
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
