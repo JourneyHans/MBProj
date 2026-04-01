@@ -5,7 +5,7 @@
 ## 目标职责
 
 - 关卡推进（Level）
-- 事件系统（Event）
+- 事件系统（Event：Enemy / NPC / Reward）
 - 奖励与选卡（Reward）
 - 长线进度（Meta Progression）
 - 怪物化扫雷规则的 Run 级编排（战斗、结算、难度节奏）
@@ -14,7 +14,9 @@
 
 - `LevelManager.startRun() / nextLevel()`
 - `EventSystem.rollEvent(context)`
+- `EventSystem.resolveEvent(event, context)`
 - `RewardSystem.generateOptions(context)`
+- `ShopSystem.generateInventory(context) / refresh(context)`
 - `MetaProgression.save()/load()`
 - `CombatDirector.onMineRevealed(context)`（规划）
 - `TurnManager.beginTurn()/endTurn()`（规划）
@@ -24,6 +26,10 @@
 - 使用 `EventBus` 通知 UI 和核心逻辑
 - 通过 `Game` 注入上下文（当前关卡、玩家状态、牌组）
 - 读取 `config.js` 中 progression 配置
+- Boss 解锁规则建议落到 `ActState`：
+  - `bossDiscovered`
+  - `battleEventsResolved`
+  - `hardOrEliteResolved`
 
 ## Phase 3 实施顺序（建议）
 

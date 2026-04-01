@@ -82,6 +82,7 @@ python -m http.server 8080
 ## 5. 文档地图
 
 - `DEVELOPMENT_GUIDE.md`（开发执行规范）
+- `EVENT_SYSTEM_DESIGN.md`（事件系统设计草案）
 - `js/core/README.md`
 - `js/grid/README.md`
 - `js/cards/README.md`
