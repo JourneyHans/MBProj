@@ -85,3 +85,14 @@
 - `getShopDefinition(tierId)`：按档位读取
 - `getAllShopDefinitions()`：获取全部档位
 - `resolveShopRefreshCost(refreshCount)`：按刷新次数计算费用
+
+## 配置联动（`config.js`）
+
+事件系统参数统一放在 `CONFIG.events`：
+
+- `typeWeights`：事件主类型权重
+- `bossThresholds`：Boss 放行门槛（关卡/精英击杀等）
+- `shop.tiers`：商店档位解锁与槽位
+- `shop.refreshCosts`：刷新费用曲线
+
+建议 core 层优先读取 `CONFIG.events` 作为运行时参数源，`js/data/*.js` 作为静态定义源。

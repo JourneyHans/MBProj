@@ -84,6 +84,12 @@
 - 接入 Boss gate 三条件：发现 Boss + 战斗事件数达到阈值 + 至少一次困难/精英事件
 - 新增 Boss gate 阻挡提示与放行判定：条件不足时阻挡 Boss 进入，满足后放行
 - 强化主循环连续性：保持“翻格 -> 事件 -> 处理 -> 翻格”可持续，不回退既有卡牌/战斗交互
+- 完成 `AI-EVT-DATA-01` 数据层落地：
+  - 新增 `js/data/eventDefinitions.js`：事件类型/子类型与按类型查询接口
+  - 新增 `js/data/shopDefinitions.js`：商店多档位定义与刷新费用计算
+  - 更新 `js/data/monsterDefinitions.js`：新增金币收益梯度配置（普通 < 困难 < 精英）
+  - 更新 `js/config.js`：新增 `CONFIG.events`（类型权重、Boss 门槛、商店参数）
+  - 同步 `js/data/README.md` 数据契约说明，供 core 层直接消费
 
 ### ✅ 本轮验收（战斗开始部分）
 - 验收结论：阶段性通过
