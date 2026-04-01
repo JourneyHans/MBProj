@@ -19,8 +19,20 @@
 - 每个 AI 使用独立分支：`feature/<task-id>`
 - 不允许修改任务白名单外文件
 - 每个任务结束后必须 `commit + push`
+- 默认流程是“分支开发 -> 校验通过 -> 自动合并到 `main` -> push `main`”
 - 仅 `main` 分支 push 会触发自动发布
-- 合并到 `main` 后必须跑 `SMOKE_TEST.md` 核心流程
+- 若校验失败，禁止合并到 `main`，仅回报失败原因
+
+## 2.1 文档更新范围（强约束）
+
+- 功能实现后必须更新“代码所在模块文档”（对应目录 `README.md`）
+- 必须同步更新：`RELEASE_NOTES.md`、`ROADMAP.md`、`SMOKE_TEST.md`
+- 禁止修改设计文档（除非任务明确要求）：
+  - `ACT_STRUCTURE_DESIGN.md`
+  - `COMBAT_DESIGN.md`
+  - `ENERGY_DRAW_LOOP_DESIGN.md`
+  - `CARD_ROLE_MATRIX.md`
+  - `EVENT_SYSTEM_DESIGN.md`
 
 ---
 
@@ -34,7 +46,7 @@
    - `git status -sb`
    - `git log -1 --oneline`
    - `git push` 原始输出
-   - 是否已 push 到 `main`（若目标含发布）
+   - 合并到 `main` 与 `push main` 的原始输出（失败也要给）
 
 ---
 
@@ -99,7 +111,9 @@
 3) 输出 git status -sb
 4) 输出 git log -1 --oneline
 5) 输出 git push 原始结果
-6) 若目标含发布，继续合并到 main 并 push main
+6) 更新文档：js/data/README.md + RELEASE_NOTES.md + ROADMAP.md + SMOKE_TEST.md
+7) 运行最小校验（至少保证无明显报错）
+8) 校验通过后，合并到 main 并 push main；若失败则禁止合并并回报原因
 
 完成后按统一回报格式输出。
 ```
@@ -168,7 +182,9 @@
 3) 输出 git status -sb
 4) 输出 git log -1 --oneline
 5) 输出 git push 原始结果
-6) 若目标含发布，继续合并到 main 并 push main
+6) 更新文档：js/core/README.md + RELEASE_NOTES.md + ROADMAP.md + SMOKE_TEST.md
+7) 运行最小校验（至少保证无明显报错）
+8) 校验通过后，合并到 main 并 push main；若失败则禁止合并并回报原因
 
 完成后按统一回报格式输出。
 ```
@@ -236,7 +252,9 @@
 3) 输出 git status -sb
 4) 输出 git log -1 --oneline
 5) 输出 git push 原始结果
-6) 若目标含发布，继续合并到 main 并 push main
+6) 更新文档：js/ui/README.md + RELEASE_NOTES.md + ROADMAP.md + SMOKE_TEST.md
+7) 运行最小校验（至少保证无明显报错）
+8) 校验通过后，合并到 main 并 push main；若失败则禁止合并并回报原因
 
 完成后按统一回报格式输出。
 ```
@@ -299,7 +317,9 @@
 3) 输出 git status -sb
 4) 输出 git log -1 --oneline
 5) 输出 git push 原始结果
-6) 若目标含发布，继续合并到 main 并 push main
+6) 仅更新允许范围文档，禁止改设计文档
+7) 运行最小校验（检查文档一致性与 smoke 条目）
+8) 校验通过后，合并到 main 并 push main；若失败则禁止合并并回报原因
 
 完成后按统一回报格式输出。
 ```

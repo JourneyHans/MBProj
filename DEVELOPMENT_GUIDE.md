@@ -27,7 +27,7 @@ python -m http.server 8080
 2. 本地验证通过
 3. 执行 Git 提交（commit）
 4. 提交后立即推送（push）到远端
-5. 若目标是触发发布，需确保变更进入 `main` 并产生 `main` 分支 push
+5. 默认执行：分支开发完成后，校验通过即合并到 `main` 并 push `main` 触发发布
 
 约束：
 
@@ -35,6 +35,7 @@ python -m http.server 8080
 - 每次工作都应对应可追踪提交，便于部署回溯
 - 仅 `main` 分支 push 会自动触发部署；推送到功能分支不会自动发布
 - 完成后必须回报 push 证据（远端分支、commit 哈希、关键命令输出）
+- 若校验失败，禁止合并到 `main`，必须先回报失败原因和修复计划
 
 ---
 
@@ -52,9 +53,20 @@ python -m http.server 8080
 
 当改动涉及功能行为或模块职责时，需同步更新文档：
 
-- 阶段变化：更新 `ROADMAP.md`
 - 模块变化：更新对应目录 `README.md`
-- 新人导航变化：更新根目录 `README.md`
+- 阶段变化：更新 `ROADMAP.md`
+- 版本记录：更新 `RELEASE_NOTES.md`
+- 回归用例：更新 `SMOKE_TEST.md`
+- 新人导航变化：必要时更新根目录 `README.md`
+
+文档范围约束（强制）：
+
+- 功能任务默认禁止改动设计文档（除非任务明确要求）：
+  - `ACT_STRUCTURE_DESIGN.md`
+  - `COMBAT_DESIGN.md`
+  - `ENERGY_DRAW_LOOP_DESIGN.md`
+  - `CARD_ROLE_MATRIX.md`
+  - `EVENT_SYSTEM_DESIGN.md`
 
 ---
 
