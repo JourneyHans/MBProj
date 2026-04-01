@@ -81,7 +81,14 @@ python -m http.server 8080
 
 ## 5. 文档地图
 
+- `ROADMAP.md`（阶段目标与进度）
+- `RELEASE_NOTES.md`（版本变更记录）
+- `SMOKE_TEST.md`（冒烟回归清单）
 - `DEVELOPMENT_GUIDE.md`（开发执行规范）
+- `COMBAT_DESIGN.md`（战斗设计初稿）
+- `ACT_STRUCTURE_DESIGN.md`（幕结构设计初稿）
+- `CARD_ROLE_MATRIX.md`（卡牌职责矩阵初稿）
+- `ENERGY_DRAW_LOOP_DESIGN.md`（能量与抽牌循环初稿）
 - `EVENT_SYSTEM_DESIGN.md`（事件系统设计草案）
 - `MULTI_AI_TASK_BOARD.md`（多 AI 并行开发任务板）
 - `js/core/README.md`
@@ -105,3 +112,5 @@ python -m http.server 8080
 - 新功能优先通过事件通信，而不是跨模块直接硬调用
 - 更新功能时同步更新模块 README 和 `ROADMAP.md`
 - 设计与实现需遵守主线约束：不能回到“纯扫雷即可稳定通关”的玩法结构
+- 协作默认采用任务分支（`feature/<task-id>`）开发，完成后再合并到 `main`
+- 发布触发规则统一为：仅 push `main` 才会触发自动部署

@@ -199,12 +199,19 @@ Phase 5: ░░░░░░░░░░░░░░░░░░░░   0%  📋
 
 路线图仅保留“阶段与目标”。  
 具体开发执行规范（本地运行、提交流程、检查清单）已迁移到 `DEVELOPMENT_GUIDE.md`。
+协作与发布口径统一如下：
+
+- 默认在任务分支（`feature/<task-id>`）开发并 push
+- 仅当最小校验与冒烟回归通过后才允许合并到 `main`
+- 仅 push `main` 会触发自动部署；任务分支 push 不触发发布
 
 ---
 
 ## 文档导航
 
 - 总览入口：`README.md`
+- 冒烟回归：`SMOKE_TEST.md`
+- 版本记录：`RELEASE_NOTES.md`
 - 战斗设计初稿：`COMBAT_DESIGN.md`
 - 幕结构设计初稿：`ACT_STRUCTURE_DESIGN.md`
 - 卡牌职责矩阵初稿：`CARD_ROLE_MATRIX.md`
