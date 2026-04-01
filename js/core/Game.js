@@ -12,12 +12,20 @@ import GridRenderer from '../grid/GridRenderer.js';
 import Deck from '../cards/Deck.js';
 import Hand from '../cards/Hand.js';
 import CardUI from '../cards/CardUI.js';
-import { buildMonsterEncounter, getMonsterDefinition, rollMonsterType } from '../data/monsterDefinitions.js';
+import {
+  buildMonsterEncounter,
+  getMonsterDefinition,
+  getMonsterGoldReward,
+  rollMonsterType
+} from '../data/monsterDefinitions.js';
 import {
   EVENT_TYPES,
   EVENT_SUB_TYPES,
+  getEventDefinition,
   getEventDefinitionsByTypeAndSubType
 } from '../data/eventDefinitions.js';
+import { getAllShopDefinitions, resolveShopRefreshCost } from '../data/shopDefinitions.js';
+import CARD_DEFINITIONS from '../data/cardDefinitions.js';
 
 class Game {
   constructor() {
@@ -84,6 +92,9 @@ class Game {
     };
     this.activeMonsterEncounter = null;
     this.actState = this.createInitialActState();
+    this.eventTimeline = [];
+    this.shopState = this.createInitialShopState();
+    this.eventShopUI = {};
 
     // Setup event listeners
     this.setupEventListeners();
@@ -105,6 +116,7 @@ class Game {
 
     // Initialize card system
     this.initializeCardSystem();
+    this.initializeEventShopUI();
 
     // Setup responsive canvas
     this.resizeCanvas();
@@ -366,6 +378,8 @@ class Game {
     this.turnActions.handRefreshUsed = 0;
     this.activeMonsterEncounter = null;
     this.actState = this.createInitialActState();
+    this.eventTimeline = [];
+    this.shopState = this.createInitialShopState();
     this.hideMonsterHoverInfo();
 
     // Clear visual effects from previous game
@@ -379,6 +393,7 @@ class Game {
     this.beginPlayerTurn('开局');
 
     this.updateHUD();
+    this.renderEventShopPanel();
     this.resizeCanvas(); // Resize canvas for new grid
     this.stateManager.transition(CONFIG.gameState.PLAYING);
   }
@@ -442,6 +457,7 @@ class Game {
     if (cell && cell.isMine && !cell.monsterCleared) {
       const eventNode = this.ensureActEventNodeForCell(cell);
       this.transitionEventState(eventNode, 'revealed');
+      this.pushEventTimelineEntry(eventNode, '事件翻开');
     }
 
     if (cell && cell.isMine && cell.protected && !cell.monsterCleared) {
@@ -452,6 +468,7 @@ class Game {
       const eventNode = this.ensureActEventNodeForCell(cell);
       this.transitionEventState(eventNode, 'pending');
       this.markEventResolved(eventNode);
+      this.pushEventTimelineEntry(eventNode, '保护触发并结算');
       this.stats.monstersResolved++;
       this.updateHUD();
       this.checkRunCompletion();
@@ -517,6 +534,7 @@ class Game {
       monstersResolved: this.stats.monstersResolved,
       bossGate: this.getBossGateSnapshot()
     });
+    this.renderEventShopPanel();
   }
 
   /**
@@ -1154,8 +1172,10 @@ class Game {
 
     const cell = this.grid.getCell(this.activeMonsterEncounter.row, this.activeMonsterEncounter.col);
     const eventNode = cell ? this.getActEventNodeByCell(cell) : null;
+    const encounterSnapshot = { ...this.activeMonsterEncounter };
     if (eventNode) {
       this.markEventResolved(eventNode, this.activeMonsterEncounter);
+      this.pushEventTimelineEntry(eventNode, '事件结算');
     }
     if (cell) {
       cell.monsterCleared = true;
@@ -1166,6 +1186,18 @@ class Game {
 
     this.stats.monstersResolved++;
     this.stats.hardPassStreak = viaHardPass ? this.stats.hardPassStreak + 1 : 0;
+
+    const rewardDifficulty = eventNode && eventNode.subType === EVENT_SUB_TYPES.COMBAT.ELITE
+      ? 'elite'
+      : (eventNode && eventNode.subType === EVENT_SUB_TYPES.COMBAT.HARD ? 'hard' : 'normal');
+    const goldReward = Math.max(0, Number(getMonsterGoldReward(encounterSnapshot.id, rewardDifficulty)) || 0);
+    this.player.gold += goldReward;
+
+    if (eventNode && eventNode.type === EVENT_TYPES.COMBAT) {
+      const tierId = this.getShopTierForEventNode(eventNode);
+      this.openShopTier(tierId, 'encounter');
+    }
+
     this.activeMonsterEncounter = null;
 
     // ── Juice: refresh blocking highlight after encounter cleared ──
@@ -1173,6 +1205,9 @@ class Game {
 
     if (message) {
       this.showToast(message, 1400);
+    }
+    if (goldReward > 0) {
+      this.showToast(`获得 ${goldReward} 金币。`, 1200);
     }
 
     this.beginPlayerTurn('遭遇结算');
@@ -1884,6 +1919,337 @@ class Game {
   resolveSingleEventDefinition(type, subType) {
     const defs = getEventDefinitionsByTypeAndSubType(type, subType);
     return Array.isArray(defs) && defs.length > 0 ? defs[0] : null;
+  }
+
+  /**
+   * Build initial shop runtime state.
+   * @returns {Object}
+   */
+  createInitialShopState() {
+    const tierDefs = getAllShopDefinitions();
+    const refreshCountByTier = {};
+    const inventoryByTier = {};
+    tierDefs.forEach((tierDef) => {
+      refreshCountByTier[tierDef.id] = 0;
+      inventoryByTier[tierDef.id] = [];
+    });
+    return {
+      activeTier: null,
+      visitedTiers: {},
+      refreshCountByTier,
+      inventoryByTier
+    };
+  }
+
+  /**
+   * Bind event/shop panel interactions.
+   */
+  initializeEventShopUI() {
+    this.eventShopUI = {
+      panel: document.getElementById('event-shop-panel'),
+      gold: document.getElementById('event-shop-gold'),
+      brief: document.getElementById('event-brief'),
+      timeline: document.getElementById('event-timeline'),
+      tierList: document.getElementById('shop-tier-list'),
+      items: document.getElementById('shop-items'),
+      refreshButton: document.getElementById('shop-refresh-button'),
+      refreshTip: document.getElementById('shop-refresh-tip')
+    };
+    if (!this.eventShopUI.panel) return;
+    if (this.eventShopUI.refreshButton) {
+      this.eventShopUI.refreshButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.refreshActiveShop();
+      });
+    }
+    this.renderEventShopPanel();
+  }
+
+  /**
+   * Append one entry into current act event timeline.
+   * @param {Object|null} eventNode
+   * @param {string} reason
+   */
+  pushEventTimelineEntry(eventNode, reason = '') {
+    if (!eventNode) return;
+    const eventDef = getEventDefinition(eventNode.eventId) || this.resolveSingleEventDefinition(eventNode.type, eventNode.subType);
+    const title = eventDef && eventDef.name ? eventDef.name : `${eventNode.type}/${eventNode.subType}`;
+    this.eventTimeline.unshift({
+      id: `${eventNode.key}-${eventNode.state}-${Date.now()}`,
+      title,
+      state: eventNode.state,
+      reason
+    });
+    this.eventTimeline = this.eventTimeline.slice(0, 8);
+    this.renderEventShopPanel();
+  }
+
+  /**
+   * Map event intensity to shop tier.
+   * @param {Object|null} eventNode
+   * @returns {string}
+   */
+  getShopTierForEventNode(eventNode) {
+    if (!eventNode) return 'basic';
+    if (eventNode.type === EVENT_TYPES.BOSS || eventNode.subType === EVENT_SUB_TYPES.COMBAT.ELITE) return 'elite';
+    if (eventNode.subType === EVENT_SUB_TYPES.COMBAT.HARD) return 'advanced';
+    return 'basic';
+  }
+
+  /**
+   * Open tier and mark it as revisit-able in this act.
+   * @param {string} tierId
+   * @param {'manual'|'encounter'} source
+   */
+  openShopTier(tierId, source = 'manual') {
+    if (!this.shopState || !this.shopState.inventoryByTier[tierId]) return;
+    if (!this.shopState.visitedTiers[tierId]) {
+      this.shopState.visitedTiers[tierId] = true;
+      if (source === 'encounter') {
+        this.showToast('发现商店入口：本幕可随时回访。', 1300);
+      }
+    }
+    this.shopState.activeTier = tierId;
+    this.ensureShopInventory(tierId);
+    this.renderEventShopPanel();
+  }
+
+  /**
+   * Ensure tier inventory exists.
+   * @param {string} tierId
+   * @param {boolean} force
+   */
+  ensureShopInventory(tierId, force = false) {
+    if (!this.shopState || !this.shopState.inventoryByTier[tierId]) return;
+    const current = this.shopState.inventoryByTier[tierId];
+    if (!force && Array.isArray(current) && current.length > 0) return;
+
+    const tierDef = getAllShopDefinitions().find((item) => item.id === tierId);
+    if (!tierDef) return;
+    const slots = Math.max(1, Number(tierDef.itemSlots) || 3);
+    const nextItems = [];
+    for (let i = 0; i < slots; i++) {
+      const cardId = this.rollShopCardId(tierDef.cardRarityWeights || {});
+      const cardDef = CARD_DEFINITIONS[cardId];
+      if (!cardDef) continue;
+      const rarity = this.normalizeShopRarity(cardDef.rarity);
+      const basePrice = rarity === 'epic' ? 6 : (rarity === 'rare' ? 4 : 2);
+      const itemPrice = basePrice + Math.max(0, Number(cardDef.energyCost) || 0);
+      nextItems.push({
+        itemId: `${tierId}-${cardId}-${Date.now()}-${i}`,
+        cardId,
+        name: cardDef.name || cardId,
+        rarity,
+        price: itemPrice
+      });
+    }
+    this.shopState.inventoryByTier[tierId] = nextItems;
+  }
+
+  /**
+   * Weighted roll for one shop card.
+   * @param {Object} rarityWeights
+   * @returns {string}
+   */
+  rollShopCardId(rarityWeights) {
+    const cards = Object.values(CARD_DEFINITIONS);
+    const byRarity = {
+      common: cards.filter((card) => this.normalizeShopRarity(card.rarity) === 'common'),
+      rare: cards.filter((card) => this.normalizeShopRarity(card.rarity) === 'rare'),
+      epic: cards.filter((card) => this.normalizeShopRarity(card.rarity) === 'epic')
+    };
+    const weights = {
+      common: Math.max(0, Number(rarityWeights.common) || 0),
+      rare: Math.max(0, Number(rarityWeights.rare) || 0),
+      epic: Math.max(0, Number(rarityWeights.epic) || 0)
+    };
+    const total = weights.common + weights.rare + weights.epic;
+    let pickedRarity = 'common';
+    if (total > 0) {
+      const roll = Math.random() * total;
+      if (roll < weights.common) {
+        pickedRarity = 'common';
+      } else if (roll < weights.common + weights.rare) {
+        pickedRarity = 'rare';
+      } else {
+        pickedRarity = 'epic';
+      }
+    }
+    const bucket = byRarity[pickedRarity].length > 0
+      ? byRarity[pickedRarity]
+      : (byRarity.rare.length > 0 ? byRarity.rare : byRarity.common);
+    const selected = bucket[Math.floor(Math.random() * bucket.length)];
+    return selected ? selected.id : 'strike';
+  }
+
+  /**
+   * Normalize card rarity to shop rarity.
+   * @param {string} rarity
+   * @returns {'common'|'rare'|'epic'}
+   */
+  normalizeShopRarity(rarity) {
+    if (rarity === 'epic') return 'epic';
+    if (rarity === 'rare' || rarity === 'uncommon') return 'rare';
+    return 'common';
+  }
+
+  /**
+   * Refresh active tier with gold cost.
+   */
+  refreshActiveShop() {
+    if (!this.shopState || !this.shopState.activeTier) {
+      this.showToast('请先进入一个商店档位。', 1200, 'error');
+      return;
+    }
+    const tierId = this.shopState.activeTier;
+    const refreshCount = this.shopState.refreshCountByTier[tierId] || 0;
+    const cost = resolveShopRefreshCost(refreshCount);
+    if (this.player.gold < cost) {
+      this.showToast(`金币不足：刷新需要 ${cost}，当前 ${this.player.gold}。`, 1400, 'error');
+      return;
+    }
+    this.player.gold -= cost;
+    this.shopState.refreshCountByTier[tierId] = refreshCount + 1;
+    this.ensureShopInventory(tierId, true);
+    this.showToast(`刷新成功，消耗 ${cost} 金币。`, 1200);
+    this.renderEventShopPanel();
+  }
+
+  /**
+   * Buy item from active tier.
+   * @param {string} itemId
+   */
+  buyShopItem(itemId) {
+    if (!this.shopState || !this.shopState.activeTier || !this.deck) return;
+    const tierId = this.shopState.activeTier;
+    const items = this.shopState.inventoryByTier[tierId] || [];
+    const target = items.find((item) => item.itemId === itemId);
+    if (!target) return;
+    if (this.player.gold < target.price) {
+      this.showToast(`金币不足：购买需要 ${target.price}，当前 ${this.player.gold}。`, 1400, 'error');
+      return;
+    }
+    this.player.gold -= target.price;
+    this.deck.addCard(target.cardId);
+    this.shopState.inventoryByTier[tierId] = items.filter((item) => item.itemId !== itemId);
+    if (this.cardUI) {
+      this.cardUI.updatePileIndicators();
+      this.cardUI.render();
+    }
+    this.showToast(`购买成功：${target.name}（-${target.price} 金币）`, 1300);
+    this.renderEventShopPanel();
+  }
+
+  /**
+   * Render event/shop panel view.
+   */
+  renderEventShopPanel() {
+    if (!this.eventShopUI || !this.eventShopUI.panel) return;
+    const {
+      gold,
+      brief,
+      timeline,
+      tierList,
+      items,
+      refreshButton,
+      refreshTip
+    } = this.eventShopUI;
+    if (gold) {
+      gold.textContent = String(this.player && Number.isFinite(this.player.gold) ? this.player.gold : 0);
+    }
+    if (brief) {
+      const latest = this.eventTimeline[0];
+      brief.textContent = latest
+        ? `最近事件：${latest.title}（${latest.state}）${latest.reason ? ` · ${latest.reason}` : ''}`
+        : '尚未翻开事件。';
+    }
+    if (timeline) {
+      timeline.innerHTML = '';
+      if (!this.eventTimeline.length) {
+        const empty = document.createElement('span');
+        empty.className = 'event-pill';
+        empty.textContent = '暂无事件记录';
+        timeline.appendChild(empty);
+      } else {
+        this.eventTimeline.forEach((entry) => {
+          const pill = document.createElement('span');
+          pill.className = 'event-pill';
+          pill.textContent = `${entry.title} · ${entry.state}`;
+          timeline.appendChild(pill);
+        });
+      }
+    }
+
+    const tierDefs = getAllShopDefinitions();
+    if (tierList) {
+      tierList.innerHTML = '';
+      tierDefs.forEach((tierDef) => {
+        const isActive = this.shopState.activeTier === tierDef.id;
+        const visited = Boolean(this.shopState.visitedTiers[tierDef.id]);
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = `shop-tier-button${isActive ? ' active' : ''}`;
+        const actionText = visited ? '回访' : '进入';
+        button.innerHTML = `${tierDef.name}<span class="shop-tier-flag">${actionText}</span>`;
+        button.addEventListener('click', () => this.openShopTier(tierDef.id, 'manual'));
+        tierList.appendChild(button);
+      });
+    }
+
+    if (refreshButton && refreshTip) {
+      const activeTier = this.shopState.activeTier;
+      if (!activeTier) {
+        refreshButton.disabled = true;
+        refreshButton.textContent = '刷新（-0 金币）';
+        refreshTip.textContent = '请先进入商店档位';
+      } else {
+        const refreshCount = this.shopState.refreshCountByTier[activeTier] || 0;
+        const cost = resolveShopRefreshCost(refreshCount);
+        refreshButton.disabled = this.player.gold < cost;
+        refreshButton.textContent = `刷新（-${cost} 金币）`;
+        const activeTierDef = tierDefs.find((tier) => tier.id === activeTier);
+        const tierName = activeTierDef ? activeTierDef.name : activeTier;
+        refreshTip.textContent = `${tierName} · 第 ${refreshCount + 1} 次刷新`;
+      }
+    }
+
+    if (items) {
+      items.innerHTML = '';
+      const activeTier = this.shopState.activeTier;
+      if (!activeTier) {
+        const empty = document.createElement('div');
+        empty.className = 'shop-item';
+        empty.innerHTML = '<div class="shop-item-name">未进入商店</div><div class="shop-item-meta">选择档位后可购买/刷新</div>';
+        items.appendChild(empty);
+      } else {
+        this.ensureShopInventory(activeTier);
+        const inventory = this.shopState.inventoryByTier[activeTier] || [];
+        if (inventory.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'shop-item';
+          empty.innerHTML = '<div class="shop-item-name">该档位已售空</div><div class="shop-item-meta">可使用刷新获取新商品</div>';
+          items.appendChild(empty);
+        } else {
+          inventory.forEach((entry) => {
+            const card = document.createElement('div');
+            card.className = 'shop-item';
+            card.innerHTML = `
+              <div class="shop-item-name">${entry.name}</div>
+              <div class="shop-item-meta">稀有度：${entry.rarity}</div>
+              <div class="shop-item-meta">价格：${entry.price} 金币</div>
+            `;
+            const buyBtn = document.createElement('button');
+            buyBtn.type = 'button';
+            buyBtn.className = 'shop-buy-button';
+            buyBtn.textContent = this.player.gold >= entry.price ? '购买' : '金币不足';
+            buyBtn.disabled = this.player.gold < entry.price;
+            buyBtn.addEventListener('click', () => this.buyShopItem(entry.itemId));
+            card.appendChild(buyBtn);
+            items.appendChild(card);
+          });
+        }
+      }
+    }
   }
 
   /**

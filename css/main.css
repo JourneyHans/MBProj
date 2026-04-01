@@ -931,8 +931,164 @@ body {
   font-weight: 700;
 }
 
+#event-shop-panel {
+  width: min(1180px, 100%);
+  border: 1px solid #334155;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.94);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.event-shop-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.event-shop-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.event-shop-gold {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f59e0b;
+}
+
+.event-brief {
+  font-size: 12px;
+  color: #cbd5e1;
+}
+
+.event-timeline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 28px;
+}
+
+.event-pill {
+  border: 1px solid #334155;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11px;
+  color: #e2e8f0;
+  background: #0b1220;
+}
+
+.shop-tier-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.shop-tier-button {
+  border: 1px solid #475569;
+  border-radius: 8px;
+  background: #0b1220;
+  color: #cbd5e1;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.shop-tier-button.active {
+  border-color: #22d3ee;
+  color: #ecfeff;
+}
+
+.shop-tier-button .shop-tier-flag {
+  margin-left: 6px;
+  color: #22d3ee;
+}
+
+.shop-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#shop-refresh-button {
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  background: rgba(180, 83, 9, 0.2);
+  color: #fef3c7;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#shop-refresh-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+#shop-refresh-tip {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.shop-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.shop-item {
+  border: 1px solid #334155;
+  border-radius: 8px;
+  background: #0b1220;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.shop-item-name {
+  color: #f8fafc;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.shop-item-meta {
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.shop-buy-button {
+  margin-top: auto;
+  border: 1px solid #22c55e;
+  border-radius: 6px;
+  background: rgba(22, 163, 74, 0.2);
+  color: #dcfce7;
+  padding: 5px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.shop-buy-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* Mobile Responsive Styles for Cards */
 @media screen and (max-width: 768px) {
+  #event-shop-panel {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .shop-items {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+
   #hand-container {
     padding: 8px;
     gap: 6px;
