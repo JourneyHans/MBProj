@@ -11,6 +11,11 @@ const MONSTER_DEFINITIONS = {
     clearedEmoji: '💧',
     rarity: 'common',
     description: '基础怪物，属性均衡。',
+    goldReward: {
+      normal: 2,
+      hard: 3,
+      elite: 5
+    },
     stats: {
       baseHp: 2,
       hpPerTier: 1,
@@ -115,9 +120,18 @@ function buildMonsterIntent(definition, attack) {
   };
 }
 
+function getMonsterGoldReward(monsterId, difficulty = 'normal') {
+  const definition = getMonsterDefinition(monsterId) || MONSTER_DEFINITIONS.slime;
+  const rewardTable = definition.goldReward || MONSTER_DEFINITIONS.slime.goldReward;
+  const normalizedDifficulty = ['normal', 'hard', 'elite'].includes(difficulty) ? difficulty : 'normal';
+
+  return rewardTable[normalizedDifficulty];
+}
+
 export {
   MONSTER_DEFINITIONS,
   getMonsterDefinition,
+  getMonsterGoldReward,
   getTierByTurn,
   rollMonsterType,
   buildMonsterEncounter

@@ -7,6 +7,8 @@
 
 - `cardDefinitions.js`：基础卡牌定义（MVP）
 - `monsterDefinitions.js`：怪物类型、权重与成长模板（P3）
+- `eventDefinitions.js`：事件类型/子类型与事件清单（AI-EVT-DATA-01）
+- `shopDefinitions.js`：商店档位、权重与刷新费用（AI-EVT-DATA-01）
 
 ## 设计原则
 
@@ -36,9 +38,7 @@
   - `CardUI.js`（展示层）
   - 模块文档 `js/cards/README.md`
 - 效果中若产生临时视觉状态，建议放到 `data` 返回结构，由 `Game` 统一收口处理
-- 后续新增数据建议拆分：
-  - `eventDefinitions.js`
-  - `rewardTables.js`
+- 奖励、掉落等后续可继续拆分到独立表（如 `rewardTables.js`）
 
 ## 怪物定义结构（当前）
 
@@ -50,8 +50,38 @@
 - 伤害映射：`damageProfile`（卡牌对该怪物的伤害修正）
 - 克制字段：`resistanceTag/tagModifiers`（按 `attackTag` 修正伤害）
 - 刷新权重：`weights.early/mid/late`
+- 金币收益：`goldReward.normal/hard/elite`（保证普通 < 困难 < 精英）
 
 遭遇实例（`buildMonsterEncounter`）还会包含：
 
 - `status.vulnerableTurns`（易伤剩余回合）
 - `status.smokeScreenTurns`（烟幕覆盖剩余回合，用于控制“是否阻挡探索”）
+
+## 事件定义结构（新增）
+
+`eventDefinitions.js` 提供统一字段：
+
+- `type`：主类型（`combat/shop/rest/story/treasure/boss`）
+- `subType`：子类型（如 `combat.normal`、`combat.elite`、`boss.gatekeeper`）
+- `id/name/description/tags`：事件基础元数据
+- `rewardProfile`：可选奖励倍率/品质标签
+
+并提供查询函数：
+
+- `getEventDefinition(eventId)`：按 ID 查询
+- `getEventDefinitionsByType(type)`：按主类型查询
+- `getEventDefinitionsByTypeAndSubType(type, subType)`：按主+子类型查询
+
+## 商店定义结构（新增）
+
+`shopDefinitions.js` 提供：
+
+- `SHOP_TIERS`：商店档位枚举（`basic/advanced/elite`）
+- `SHOP_DEFINITIONS`：每档位的解锁关卡、槽位、权重、稀有度权重
+- `SHOP_REFRESH_COSTS`：刷新费用曲线（基础费用/递增/上限）
+
+并提供查询函数：
+
+- `getShopDefinition(tierId)`：按档位读取
+- `getAllShopDefinitions()`：获取全部档位
+- `resolveShopRefreshCost(refreshCount)`：按刷新次数计算费用

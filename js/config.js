@@ -52,6 +52,44 @@ const CONFIG = {
     goldMultiplier: 1.0
   },
 
+  // Event system settings
+  events: {
+    typeWeights: {
+      combat: 45,
+      shop: 15,
+      rest: 15,
+      story: 10,
+      treasure: 10,
+      boss: 5
+    },
+    bossThresholds: {
+      gatekeeperLevel: 5,
+      finalBossLevel: 10,
+      minEliteKillsForBoss: 2
+    },
+    shop: {
+      tiers: {
+        basic: {
+          unlockLevel: 1,
+          itemSlots: 3
+        },
+        advanced: {
+          unlockLevel: 6,
+          itemSlots: 4
+        },
+        elite: {
+          unlockLevel: 12,
+          itemSlots: 5
+        }
+      },
+      refreshCosts: {
+        baseCost: 1,
+        incrementPerRefresh: 1,
+        maxCost: 6
+      }
+    }
+  },
+
   // Debug settings
   debug: {
     enabled: false
