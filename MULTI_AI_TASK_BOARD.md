@@ -14,16 +14,6 @@
 - 提交前必须同步文档与冒烟清单（若行为变更）
 - 每个 Prompt 必须包含“提交并 push”的后置指令，不允许只停留在本地提交
 
-## 0.1 Prompt 通用后置指令（建议直接追加到每个任务 Prompt 末尾）
-
-```text
-交付动作（必须执行）：
-1) git add/commit
-2) git push 到你的任务分支
-3) 输出 git status -sb、git log -1 --oneline、git push 结果
-4) 若目标是触发发布，再执行合并到 main 并 push main
-```
-
 ---
 
 ## 1. 任务依赖图
@@ -137,6 +127,12 @@
 - 无循环依赖
 - 文档已同步
 
+交付动作（必须执行，不可省略）：
+1) 完成修改后执行 git add 与 git commit
+2) 立即执行 git push 到当前任务分支（例如 feature/ai-evt-data-01）
+3) 输出 git status -sb、git log -1 --oneline、git push 原始结果
+4) 若当前任务目标包含“触发发布”，继续执行“合并到 main 并 push main”
+
 完成后请输出：
 1) 修改文件列表
 2) 关键实现点
@@ -221,6 +217,12 @@
 - 主循环可继续（翻格 -> 事件 -> 处理 -> 翻格）
 - 文档同步完成
 
+交付动作（必须执行，不可省略）：
+1) 完成修改后执行 git add 与 git commit
+2) 立即执行 git push 到当前任务分支（例如 feature/ai-evt-core-01）
+3) 输出 git status -sb、git log -1 --oneline、git push 原始结果
+4) 若当前任务目标包含“触发发布”，继续执行“合并到 main 并 push main”
+
 完成后请输出：
 1) 修改文件列表
 2) 关键实现点
@@ -302,6 +304,12 @@
 - 金币不足有明确反馈
 - 不破坏既有卡牌 UI 交互
 
+交付动作（必须执行，不可省略）：
+1) 完成修改后执行 git add 与 git commit
+2) 立即执行 git push 到当前任务分支（例如 feature/ai-evt-ui-01）
+3) 输出 git status -sb、git log -1 --oneline、git push 原始结果
+4) 若当前任务目标包含“触发发布”，继续执行“合并到 main 并 push main”
+
 完成后请输出：
 1) 修改文件列表
 2) 关键实现点
@@ -380,6 +388,12 @@
 - 文档之间无口径冲突
 - smoke 可覆盖关键新流程
 - 变更可追踪
+
+交付动作（必须执行，不可省略）：
+1) 完成修改后执行 git add 与 git commit
+2) 立即执行 git push 到当前任务分支（例如 feature/ai-evt-qa-01）
+3) 输出 git status -sb、git log -1 --oneline、git push 原始结果
+4) 若当前任务目标包含“触发发布”，继续执行“合并到 main 并 push main”
 
 完成后请输出：
 1) 修改文件列表
