@@ -83,6 +83,7 @@ python -m http.server 8080
 
 - `DEVELOPMENT_GUIDE.md`（开发执行规范）
 - `EVENT_SYSTEM_DESIGN.md`（事件系统设计草案）
+- `MULTI_AI_TASK_BOARD.md`（多 AI 并行开发任务板）
 - `js/core/README.md`
 - `js/grid/README.md`
 - `js/cards/README.md`
