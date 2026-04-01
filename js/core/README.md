@@ -34,6 +34,23 @@
 4. 怪物结算 -> `Game.resolveMonsterEncounter()` -> 新回合补能量/补手牌
 5. 仅在“安全区清空 + 怪物全处理”时触发胜利
 
+### 事件状态机与 Boss Gate（AI-EVT-CORE-01）
+
+`Game` 在主流程中引入幕级运行时状态（`actState`），每个地雷事件节点统一走：
+
+1. `hidden`：地雷已生成但未揭示
+2. `revealed`：节点被揭示（已知事件存在）
+3. `pending`：进入事件处理（例如怪物遭遇已激活）
+4. `resolved`：事件结算完成
+
+Boss gate 同步在 `Game` 内判定，并要求三条件同时满足：
+
+- `bossDiscovered`：Boss 节点已发现
+- `battleEventsResolved >= minBattleEventsForBoss`
+- `hardOrEliteResolved >= 1`
+
+当 Boss 节点已发现但 gate 未开放时，Boss 节点不进入 `pending`，并给出阻挡提示；满足条件后可正常进入遭遇并结算。
+
 ### 能量-抽牌循环（P3-B）
 
 1. 每次翻格操作获得能量（单次操作上限 +1，且受最大能量上限约束）

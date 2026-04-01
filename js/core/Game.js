@@ -13,6 +13,11 @@ import Deck from '../cards/Deck.js';
 import Hand from '../cards/Hand.js';
 import CardUI from '../cards/CardUI.js';
 import { buildMonsterEncounter, getMonsterDefinition, rollMonsterType } from '../data/monsterDefinitions.js';
+import {
+  EVENT_TYPES,
+  EVENT_SUB_TYPES,
+  getEventDefinitionsByTypeAndSubType
+} from '../data/eventDefinitions.js';
 
 class Game {
   constructor() {
@@ -78,6 +83,7 @@ class Game {
       handRefreshUsed: 0
     };
     this.activeMonsterEncounter = null;
+    this.actState = this.createInitialActState();
 
     // Setup event listeners
     this.setupEventListeners();
@@ -295,6 +301,7 @@ class Game {
     // First click initialization
     if (!this.grid.initialized) {
       this.grid.initialize({ row, col });
+      this.initializeActEventsFromGrid();
       this.stats.startTime = Date.now();
     }
 
@@ -358,6 +365,7 @@ class Game {
     this.turnEffects.preventCounterAttack = false;
     this.turnActions.handRefreshUsed = 0;
     this.activeMonsterEncounter = null;
+    this.actState = this.createInitialActState();
     this.hideMonsterHoverInfo();
 
     // Clear visual effects from previous game
@@ -431,11 +439,19 @@ class Game {
    * @param {Cell} cell - Revealed cell
    */
   onCellRevealed(cell) {
+    if (cell && cell.isMine && !cell.monsterCleared) {
+      const eventNode = this.ensureActEventNodeForCell(cell);
+      this.transitionEventState(eventNode, 'revealed');
+    }
+
     if (cell && cell.isMine && cell.protected && !cell.monsterCleared) {
       if (!cell.monsterType) {
         cell.monsterType = rollMonsterType(this.stats.turn || 1);
       }
       cell.monsterCleared = true;
+      const eventNode = this.ensureActEventNodeForCell(cell);
+      this.transitionEventState(eventNode, 'pending');
+      this.markEventResolved(eventNode);
       this.stats.monstersResolved++;
       this.updateHUD();
       this.checkRunCompletion();
@@ -498,7 +514,8 @@ class Game {
       timeElapsed: this.stats.timeElapsed,
       hp: this.getCurrentHp(),
       turn: this.stats.turn,
-      monstersResolved: this.stats.monstersResolved
+      monstersResolved: this.stats.monstersResolved,
+      bossGate: this.getBossGateSnapshot()
     });
   }
 
@@ -1074,6 +1091,14 @@ class Game {
     if (!cell || !cell.isMine) return;
     if (this.activeMonsterEncounter && this.isActiveMonsterCell(cell.row, cell.col)) return;
     if (cell.monsterCleared) return;
+    const eventNode = this.ensureActEventNodeForCell(cell);
+
+    if (eventNode && eventNode.type === EVENT_TYPES.BOSS && !this.canEnterBossGate()) {
+      this.transitionEventState(eventNode, 'revealed');
+      this._playSound('blocked');
+      this.showToast(this.getBossGateBlockReason(), 1800, 'error');
+      return;
+    }
 
     if (!cell.monsterType) {
       cell.monsterType = rollMonsterType(this.stats.turn || 1);
@@ -1097,6 +1122,8 @@ class Game {
       col: cell.col,
       ...encounter
     };
+    this.applyEncounterEventProfile(this.activeMonsterEncounter, eventNode);
+    this.transitionEventState(eventNode, 'pending');
     this.ensureEncounterEnergyFloor();
     if (this.gridRenderer) {
       this.gridRenderer.markDirty(cell);
@@ -1126,6 +1153,10 @@ class Game {
     const { viaHardPass = false } = options;
 
     const cell = this.grid.getCell(this.activeMonsterEncounter.row, this.activeMonsterEncounter.col);
+    const eventNode = cell ? this.getActEventNodeByCell(cell) : null;
+    if (eventNode) {
+      this.markEventResolved(eventNode, this.activeMonsterEncounter);
+    }
     if (cell) {
       cell.monsterCleared = true;
       if (this.gridRenderer) {
@@ -1281,6 +1312,15 @@ class Game {
       for (let c = 0; c < this.grid.cols; c++) {
         const cell = cells[r][c];
         if (!cell.revealed || !cell.isMine || cell.monsterCleared) continue;
+        const eventNode = this.getActEventNodeByCoords(r, c);
+        if (
+          eventNode &&
+          eventNode.type === EVENT_TYPES.BOSS &&
+          eventNode.state === 'revealed' &&
+          !this.canEnterBossGate()
+        ) {
+          continue;
+        }
 
         const isActive = this.isActiveMonsterCell(r, c);
         if (isActive && !this.isEncounterBlockingExploration()) {
@@ -1552,6 +1592,10 @@ class Game {
     if (!this.grid) return;
     if (this.getUnresolvedMonsterCount() > 0) return;
     if (!this.isSafeAreaCleared()) return;
+    if (!this.isBossResolved()) {
+      this.showToast('Boss 事件尚未完成，无法结算本幕。', 1600, 'error');
+      return;
+    }
     this.victory();
   }
 
@@ -1583,6 +1627,263 @@ class Game {
     if (!this.grid) return false;
     const stats = this.grid.getStats();
     return stats.revealedCount >= stats.safeCells;
+  }
+
+  /**
+   * Build initial act-scoped runtime state.
+   * @returns {Object}
+   */
+  createInitialActState() {
+    const minBattles = Math.max(1, Number(CONFIG.events?.bossThresholds?.gatekeeperLevel) || 5);
+    return {
+      initialized: false,
+      bossNodeKey: null,
+      nodes: {},
+      bossGate: {
+        bossDiscovered: false,
+        battleEventsResolved: 0,
+        hardOrEliteResolved: 0,
+        minBattleEventsForBoss: minBattles
+      }
+    };
+  }
+
+  /**
+   * Initialize event nodes once mines are generated.
+   */
+  initializeActEventsFromGrid() {
+    if (!this.grid || !this.grid.initialized) return;
+    if (!this.actState || this.actState.initialized) return;
+
+    const bossDef = this.resolveSingleEventDefinition(EVENT_TYPES.BOSS, EVENT_SUB_TYPES.BOSS.GATEKEEPER);
+    const combatDef = this.resolveSingleEventDefinition(EVENT_TYPES.COMBAT, EVENT_SUB_TYPES.COMBAT.NORMAL);
+    const mines = [];
+    const cells = this.grid.getAllCells();
+    for (let r = 0; r < this.grid.rows; r++) {
+      for (let c = 0; c < this.grid.cols; c++) {
+        const cell = cells[r][c];
+        if (cell && cell.isMine) {
+          mines.push(cell);
+        }
+      }
+    }
+
+    if (mines.length <= 0) {
+      this.actState.initialized = true;
+      return;
+    }
+
+    const bossIndex = mines.length - 1;
+    mines.forEach((mineCell, index) => {
+      const isBoss = index === bossIndex;
+      const key = this.getEventNodeKey(mineCell.row, mineCell.col);
+      this.actState.nodes[key] = {
+        key,
+        row: mineCell.row,
+        col: mineCell.col,
+        eventId: isBoss ? bossDef?.id || 'boss_gatekeeper_01' : combatDef?.id || 'combat_normal_01',
+        type: isBoss ? EVENT_TYPES.BOSS : EVENT_TYPES.COMBAT,
+        subType: isBoss ? EVENT_SUB_TYPES.BOSS.GATEKEEPER : EVENT_SUB_TYPES.COMBAT.NORMAL,
+        state: 'hidden',
+        countedForGate: false
+      };
+      if (isBoss) {
+        this.actState.bossNodeKey = key;
+      }
+    });
+
+    this.actState.initialized = true;
+  }
+
+  /**
+   * Ensure the mine cell has a bound act event node.
+   * @param {Object} cell - grid cell
+   * @returns {Object|null}
+   */
+  ensureActEventNodeForCell(cell) {
+    if (!cell || !cell.isMine) return null;
+    if (!this.actState) this.actState = this.createInitialActState();
+    if (!this.actState.initialized) {
+      this.initializeActEventsFromGrid();
+    }
+
+    const key = this.getEventNodeKey(cell.row, cell.col);
+    if (this.actState.nodes[key]) return this.actState.nodes[key];
+
+    const combatDef = this.resolveSingleEventDefinition(EVENT_TYPES.COMBAT, EVENT_SUB_TYPES.COMBAT.NORMAL);
+    this.actState.nodes[key] = {
+      key,
+      row: cell.row,
+      col: cell.col,
+      eventId: combatDef?.id || 'combat_normal_01',
+      type: EVENT_TYPES.COMBAT,
+      subType: EVENT_SUB_TYPES.COMBAT.NORMAL,
+      state: 'hidden',
+      countedForGate: false
+    };
+    return this.actState.nodes[key];
+  }
+
+  /**
+   * @param {number} row
+   * @param {number} col
+   * @returns {string}
+   */
+  getEventNodeKey(row, col) {
+    return `${row},${col}`;
+  }
+
+  /**
+   * @param {number} row
+   * @param {number} col
+   * @returns {Object|null}
+   */
+  getActEventNodeByCoords(row, col) {
+    if (!this.actState || !this.actState.nodes) return null;
+    return this.actState.nodes[this.getEventNodeKey(row, col)] || null;
+  }
+
+  /**
+   * @param {Object} cell
+   * @returns {Object|null}
+   */
+  getActEventNodeByCell(cell) {
+    if (!cell) return null;
+    return this.getActEventNodeByCoords(cell.row, cell.col);
+  }
+
+  /**
+   * Transition event node in fixed flow: hidden -> revealed -> pending -> resolved.
+   * @param {Object|null} node
+   * @param {'hidden'|'revealed'|'pending'|'resolved'} targetState
+   */
+  transitionEventState(node, targetState) {
+    if (!node || !targetState) return;
+    const stateOrder = ['hidden', 'revealed', 'pending', 'resolved'];
+    const currentIndex = stateOrder.indexOf(node.state);
+    const targetIndex = stateOrder.indexOf(targetState);
+    if (currentIndex === -1 || targetIndex === -1 || targetIndex < currentIndex) return;
+    if (currentIndex === targetIndex) return;
+    node.state = targetState;
+    if (node.type === EVENT_TYPES.BOSS && targetState === 'revealed') {
+      this.actState.bossGate.bossDiscovered = true;
+    }
+  }
+
+  /**
+   * Update node profile according to encounter intensity before entering pending.
+   * @param {Object} encounter
+   * @param {Object|null} eventNode
+   */
+  applyEncounterEventProfile(encounter, eventNode) {
+    if (!encounter || !eventNode || eventNode.type !== EVENT_TYPES.COMBAT) return;
+    const tier = Number(encounter.tier) || 1;
+    if (tier >= 3) {
+      eventNode.subType = EVENT_SUB_TYPES.COMBAT.ELITE;
+    } else if (tier >= 2) {
+      eventNode.subType = EVENT_SUB_TYPES.COMBAT.HARD;
+    } else {
+      eventNode.subType = EVENT_SUB_TYPES.COMBAT.NORMAL;
+    }
+    const def = this.resolveSingleEventDefinition(EVENT_TYPES.COMBAT, eventNode.subType);
+    if (def && def.id) {
+      eventNode.eventId = def.id;
+    }
+  }
+
+  /**
+   * Mark event node resolved and sync boss gate progress.
+   * @param {Object|null} node
+   * @param {Object|null} encounter
+   */
+  markEventResolved(node, encounter = null) {
+    if (!node) return;
+    this.transitionEventState(node, 'resolved');
+    if (node.countedForGate) return;
+    node.countedForGate = true;
+
+    if (node.type === EVENT_TYPES.COMBAT) {
+      this.actState.bossGate.battleEventsResolved += 1;
+      const isHard = node.subType === EVENT_SUB_TYPES.COMBAT.HARD;
+      const isElite = node.subType === EVENT_SUB_TYPES.COMBAT.ELITE;
+      const encounterTier = Number(encounter && encounter.tier) || 0;
+      if (isHard || isElite || encounterTier >= 2) {
+        this.actState.bossGate.hardOrEliteResolved += 1;
+      }
+    }
+  }
+
+  /**
+   * Whether boss gate requirements are currently met.
+   * @returns {boolean}
+   */
+  canEnterBossGate() {
+    if (!this.actState || !this.actState.bossGate) return false;
+    const gate = this.actState.bossGate;
+    return Boolean(gate.bossDiscovered)
+      && gate.battleEventsResolved >= gate.minBattleEventsForBoss
+      && gate.hardOrEliteResolved >= 1;
+  }
+
+  /**
+   * Build textual block reason for current boss gate state.
+   * @returns {string}
+   */
+  getBossGateBlockReason() {
+    const gate = this.getBossGateSnapshot();
+    const missing = [];
+    if (!gate.bossDiscovered) {
+      missing.push('尚未发现 Boss');
+    }
+    if (gate.battleEventsResolved < gate.minBattleEventsForBoss) {
+      missing.push(`战斗事件 ${gate.battleEventsResolved}/${gate.minBattleEventsForBoss}`);
+    }
+    if (gate.hardOrEliteResolved < 1) {
+      missing.push('至少完成 1 次困难/精英事件');
+    }
+    if (missing.length === 0) return 'Boss gate 已开放。';
+    return `Boss gate 未开放：${missing.join('，')}`;
+  }
+
+  /**
+   * @returns {Object}
+   */
+  getBossGateSnapshot() {
+    const gate = this.actState && this.actState.bossGate
+      ? this.actState.bossGate
+      : {
+        bossDiscovered: false,
+        battleEventsResolved: 0,
+        hardOrEliteResolved: 0,
+        minBattleEventsForBoss: 1
+      };
+    return {
+      bossDiscovered: Boolean(gate.bossDiscovered),
+      battleEventsResolved: gate.battleEventsResolved || 0,
+      hardOrEliteResolved: gate.hardOrEliteResolved || 0,
+      minBattleEventsForBoss: gate.minBattleEventsForBoss || 1,
+      unlocked: this.canEnterBossGate()
+    };
+  }
+
+  /**
+   * @returns {boolean}
+   */
+  isBossResolved() {
+    if (!this.actState || !this.actState.bossNodeKey) return false;
+    const bossNode = this.actState.nodes[this.actState.bossNodeKey];
+    return Boolean(bossNode && bossNode.state === 'resolved');
+  }
+
+  /**
+   * Resolve the first matching event definition.
+   * @param {string} type
+   * @param {string} subType
+   * @returns {Object|null}
+   */
+  resolveSingleEventDefinition(type, subType) {
+    const defs = getEventDefinitionsByTypeAndSubType(type, subType);
+    return Array.isArray(defs) && defs.length > 0 ? defs[0] : null;
   }
 
   /**

@@ -30,6 +30,9 @@
   - `bossDiscovered`
   - `battleEventsResolved`
   - `hardOrEliteResolved`
+- 事件节点状态在 `Game.actState.nodes` 统一推进：
+  - `hidden -> revealed -> pending -> resolved`
+  - Boss 在 `revealed` 且 gate 未满足时保持阻挡提示，不进入 `pending`
 
 ## Phase 3 实施顺序（建议）
 
