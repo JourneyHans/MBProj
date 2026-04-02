@@ -463,7 +463,8 @@ class Game {
 
     if (cell && cell.isMine && cell.protected && !cell.monsterCleared) {
       if (!cell.monsterType) {
-        cell.monsterType = rollMonsterType(this.stats.turn || 1);
+        const eventNode = this.ensureActEventNodeForCell(cell);
+        cell.monsterType = this.resolveMonsterTypeForEvent(eventNode, this.stats.turn || 1);
       }
       cell.monsterCleared = true;
       const eventNode = this.ensureActEventNodeForCell(cell);
@@ -1154,7 +1155,7 @@ class Game {
     }
 
     if (!cell.monsterType) {
-      cell.monsterType = rollMonsterType(this.stats.turn || 1);
+      cell.monsterType = this.resolveMonsterTypeForEvent(eventNode, this.stats.turn || 1);
     }
 
     if (this.activeMonsterEncounter) {
@@ -1964,6 +1965,21 @@ class Game {
   resolveSingleEventDefinition(type, subType) {
     const defs = getEventDefinitionsByTypeAndSubType(type, subType);
     return Array.isArray(defs) && defs.length > 0 ? defs[0] : null;
+  }
+
+  /**
+   * Resolve monster type for an event node.
+   * Boss nodes use a dedicated archetype instead of random common monsters.
+   * @param {Object|null} eventNode
+   * @param {number} turn
+   * @returns {string}
+   */
+  resolveMonsterTypeForEvent(eventNode, turn = 1) {
+    if (eventNode && eventNode.type === EVENT_TYPES.BOSS) {
+      const configuredBossType = CONFIG.events?.bossMonsterType || 'phantom';
+      return getMonsterDefinition(configuredBossType) ? configuredBossType : 'phantom';
+    }
+    return rollMonsterType(turn);
   }
 
   /**
