@@ -11,6 +11,7 @@
 2. `AI-EVT-CORE-01`（依赖 DATA）
 3. `AI-EVT-UI-01`（依赖 CORE）
 4. `AI-EVT-QA-01`（可并行准备，最后收口）
+5. `AI-EVT-SHOP-SEM-01`（依赖 CORE + UI，用于修正商店触发语义）
 
 ---
 
@@ -319,6 +320,82 @@
 5) 输出 git push 原始结果
 6) 仅更新允许范围文档，禁止改设计文档
 7) 运行最小校验（检查文档一致性与 smoke 条目）
+8) 校验通过后，合并到 main 并 push main；若失败则禁止合并并回报原因
+
+完成后按统一回报格式输出。
+```
+
+---
+
+## 4.5 AI-EVT-SHOP-SEM-01
+
+**目标**：将商店从“常驻可进”修正为“商人事件触发后可进且可回访”。
+
+**允许修改**：
+- `js/core/Game.js`
+- `js/data/eventDefinitions.js`
+- `js/core/README.md`
+- `js/data/README.md`
+- `js/ui/README.md`
+- `RELEASE_NOTES.md`
+- `ROADMAP.md`
+- `SMOKE_TEST.md`
+
+**禁止修改**：
+- 设计文档：`ACT_STRUCTURE_DESIGN.md`、`COMBAT_DESIGN.md`、`ENERGY_DRAW_LOOP_DESIGN.md`、`CARD_ROLE_MATRIX.md`、`EVENT_SYSTEM_DESIGN.md`
+- `index.html`（除非确有必要且任务说明明确）
+- `css/main.css`（除非确有必要且任务说明明确）
+- 其他未列出文件
+
+**必须满足**：
+1) 商店不可在开局直接进入（未触发商人事件前禁用）
+2) 只有触发商人事件后，商店入口才开放
+3) 已触发商人事件在同一幕内可回访
+4) 不能破坏现有战斗、Boss gate、奖励发放逻辑
+
+**DoD**：
+- 新局开始时商店入口不可进入
+- 首次触发商人事件后可进入商店
+- 触发后可多次回访且刷新/购买流程正常
+- `SMOKE_TEST.md` 增加对应回归项
+
+**Prompt（直接投喂）**：
+```text
+你负责 Task: AI-EVT-SHOP-SEM-01。
+
+目标：
+将商店从“常驻可进”修正为“商人事件触发后可进且可回访”。
+
+允许修改：
+- js/core/Game.js
+- js/data/eventDefinitions.js
+- js/core/README.md
+- js/data/README.md
+- js/ui/README.md
+- RELEASE_NOTES.md
+- ROADMAP.md
+- SMOKE_TEST.md
+
+禁止修改：
+- 设计文档：ACT_STRUCTURE_DESIGN.md、COMBAT_DESIGN.md、ENERGY_DRAW_LOOP_DESIGN.md、CARD_ROLE_MATRIX.md、EVENT_SYSTEM_DESIGN.md
+- index.html（除非确有必要且任务说明明确）
+- css/main.css（除非确有必要且任务说明明确）
+- 其他未列出文件
+
+必须满足：
+1) 商店在未触发商人事件前不可进入
+2) 触发商人事件后才开放商店
+3) 已触发商人事件在同一幕可回访
+4) 不破坏战斗、Boss gate、金币结算等既有流程
+
+交付动作（强制）：
+1) git add && git commit
+2) git push 到 feature/ai-evt-shop-sem-01（或当前任务分支）
+3) 输出 git status -sb
+4) 输出 git log -1 --oneline
+5) 输出 git push 原始结果
+6) 更新文档：对应模块 README + RELEASE_NOTES.md + ROADMAP.md + SMOKE_TEST.md
+7) 运行最小校验（至少保证无明显报错）
 8) 校验通过后，合并到 main 并 push main；若失败则禁止合并并回报原因
 
 完成后按统一回报格式输出。
