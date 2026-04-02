@@ -1329,8 +1329,15 @@ body {
 
 /* 手机横屏适配：压缩资源区与卡牌区尺寸，避免元素过大 */
 @media screen and (max-width: 1024px) and (orientation: landscape) {
+  body {
+    overflow-y: auto;
+    align-items: flex-start;
+  }
+
   #game-container {
     width: 100%;
+    height: auto;
+    min-height: 100vh;
     padding: 6px;
     gap: 8px;
   }
@@ -1347,17 +1354,23 @@ body {
 
   #main-layout {
     grid-template-columns: 1fr !important;
-    min-height: 0;
+    min-height: auto !important;
+    gap: 8px;
+  }
+
+  #left-column {
+    grid-template-rows: auto auto;
     gap: 8px;
   }
 
   #canvas-container {
-    min-height: 42vh;
+    min-height: 34vh;
+    max-height: 42vh;
     padding: 8px;
   }
 
   #hand-container {
-    max-height: 42vh;
+    max-height: 30vh;
     padding: 8px;
     gap: 8px;
   }
@@ -1419,6 +1432,6 @@ body {
   }
 
   #event-shop-panel {
-    max-height: 30vh;
+    max-height: 22vh;
   }
 }
