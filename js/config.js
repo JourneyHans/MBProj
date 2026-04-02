@@ -54,6 +54,7 @@ const CONFIG = {
 
   // Event system settings
   events: {
+    bossMonsterType: 'act1_gatekeeper',
     typeWeights: {
       combat: 45,
       shop: 15,

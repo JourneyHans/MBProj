@@ -1976,8 +1976,11 @@ class Game {
    */
   resolveMonsterTypeForEvent(eventNode, turn = 1) {
     if (eventNode && eventNode.type === EVENT_TYPES.BOSS) {
-      const configuredBossType = CONFIG.events?.bossMonsterType || 'phantom';
-      return getMonsterDefinition(configuredBossType) ? configuredBossType : 'phantom';
+      const configuredBossType = CONFIG.events?.bossMonsterType || 'act1_gatekeeper';
+      if (getMonsterDefinition(configuredBossType)) {
+        return configuredBossType;
+      }
+      return getMonsterDefinition('act1_gatekeeper') ? 'act1_gatekeeper' : 'phantom';
     }
     return rollMonsterType(turn);
   }
