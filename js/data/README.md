@@ -64,6 +64,7 @@
 - `type`：主类型（`combat/shop/rest/story/treasure/boss`）
 - `subType`：子类型（如 `combat.normal`、`combat.elite`、`boss.gatekeeper`）
 - `id/name/description/tags`：事件基础元数据
+- `unlocksShop`：可选字段，标记该事件是否用于解锁商店访问（当前 `shop_mixed_01=true`）
 - `rewardProfile`：可选奖励倍率/品质标签
 
 并提供查询函数：

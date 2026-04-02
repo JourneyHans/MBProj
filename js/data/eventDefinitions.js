@@ -84,7 +84,8 @@ const EVENT_DEFINITIONS = [
     subType: EVENT_SUB_TYPES.SHOP.MIXED,
     name: '黑市商人',
     description: '提供混合商品池并支持刷新。',
-    tags: ['economy', 'merchant']
+    tags: ['economy', 'merchant'],
+    unlocksShop: true
   },
   {
     id: 'rest_heal_01',

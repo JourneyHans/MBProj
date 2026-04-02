@@ -1194,6 +1194,7 @@ class Game {
     this.player.gold += goldReward;
 
     if (eventNode && eventNode.type === EVENT_TYPES.COMBAT) {
+      this.unlockShopByMerchantEvent();
       const tierId = this.getShopTierForEventNode(eventNode);
       this.openShopTier(tierId, 'encounter');
     }
@@ -1934,6 +1935,8 @@ class Game {
       inventoryByTier[tierDef.id] = [];
     });
     return {
+      unlocked: false,
+      unlockEventId: null,
       activeTier: null,
       visitedTiers: {},
       refreshCountByTier,
@@ -1997,12 +2000,38 @@ class Game {
   }
 
   /**
+   * Trigger merchant event once per act and unlock shop revisit.
+   */
+  unlockShopByMerchantEvent() {
+    if (!this.shopState || this.shopState.unlocked) return;
+    const merchantDef = this.resolveSingleEventDefinition(EVENT_TYPES.SHOP, EVENT_SUB_TYPES.SHOP.MIXED);
+    const merchantId = merchantDef && merchantDef.id ? merchantDef.id : 'shop_mixed_01';
+    const merchantName = merchantDef && merchantDef.name ? merchantDef.name : '黑市商人';
+    this.shopState.unlocked = true;
+    this.shopState.unlockEventId = merchantId;
+    this.eventTimeline.unshift({
+      id: `merchant-unlock-${Date.now()}`,
+      title: merchantName,
+      state: 'resolved',
+      reason: '商人事件触发，商店已开放'
+    });
+    this.eventTimeline = this.eventTimeline.slice(0, 8);
+    this.showToast('黑市商人现身：商店已开放，本幕可回访。', 1400);
+  }
+
+  /**
    * Open tier and mark it as revisit-able in this act.
    * @param {string} tierId
    * @param {'manual'|'encounter'} source
    */
   openShopTier(tierId, source = 'manual') {
     if (!this.shopState || !this.shopState.inventoryByTier[tierId]) return;
+    if (!this.shopState.unlocked) {
+      if (source === 'manual') {
+        this.showToast('商店尚未开放：请先触发商人事件。', 1400, 'error');
+      }
+      return;
+    }
     if (!this.shopState.visitedTiers[tierId]) {
       this.shopState.visitedTiers[tierId] = true;
       if (source === 'encounter') {
@@ -2097,7 +2126,11 @@ class Game {
    * Refresh active tier with gold cost.
    */
   refreshActiveShop() {
-    if (!this.shopState || !this.shopState.activeTier) {
+    if (!this.shopState || !this.shopState.unlocked) {
+      this.showToast('商店尚未开放：请先触发商人事件。', 1200, 'error');
+      return;
+    }
+    if (!this.shopState.activeTier) {
       this.showToast('请先进入一个商店档位。', 1200, 'error');
       return;
     }
@@ -2120,7 +2153,7 @@ class Game {
    * @param {string} itemId
    */
   buyShopItem(itemId) {
-    if (!this.shopState || !this.shopState.activeTier || !this.deck) return;
+    if (!this.shopState || !this.shopState.unlocked || !this.shopState.activeTier || !this.deck) return;
     const tierId = this.shopState.activeTier;
     const items = this.shopState.inventoryByTier[tierId] || [];
     const target = items.find((item) => item.itemId === itemId);
@@ -2181,6 +2214,7 @@ class Game {
     }
 
     const tierDefs = getAllShopDefinitions();
+    const shopUnlocked = Boolean(this.shopState && this.shopState.unlocked);
     if (tierList) {
       tierList.innerHTML = '';
       tierDefs.forEach((tierDef) => {
@@ -2189,7 +2223,8 @@ class Game {
         const button = document.createElement('button');
         button.type = 'button';
         button.className = `shop-tier-button${isActive ? ' active' : ''}`;
-        const actionText = visited ? '回访' : '进入';
+        button.disabled = !shopUnlocked;
+        const actionText = !shopUnlocked ? '未开放' : (visited ? '回访' : '进入');
         button.innerHTML = `${tierDef.name}<span class="shop-tier-flag">${actionText}</span>`;
         button.addEventListener('click', () => this.openShopTier(tierDef.id, 'manual'));
         tierList.appendChild(button);
@@ -2197,24 +2232,37 @@ class Game {
     }
 
     if (refreshButton && refreshTip) {
-      const activeTier = this.shopState.activeTier;
-      if (!activeTier) {
+      if (!shopUnlocked) {
         refreshButton.disabled = true;
         refreshButton.textContent = '刷新（-0 金币）';
-        refreshTip.textContent = '请先进入商店档位';
+        refreshTip.textContent = '商店未开放：请先触发商人事件';
       } else {
-        const refreshCount = this.shopState.refreshCountByTier[activeTier] || 0;
-        const cost = resolveShopRefreshCost(refreshCount);
-        refreshButton.disabled = this.player.gold < cost;
-        refreshButton.textContent = `刷新（-${cost} 金币）`;
-        const activeTierDef = tierDefs.find((tier) => tier.id === activeTier);
-        const tierName = activeTierDef ? activeTierDef.name : activeTier;
-        refreshTip.textContent = `${tierName} · 第 ${refreshCount + 1} 次刷新`;
+        const activeTier = this.shopState.activeTier;
+        if (!activeTier) {
+          refreshButton.disabled = true;
+          refreshButton.textContent = '刷新（-0 金币）';
+          refreshTip.textContent = '请先进入商店档位';
+        } else {
+          const refreshCount = this.shopState.refreshCountByTier[activeTier] || 0;
+          const cost = resolveShopRefreshCost(refreshCount);
+          refreshButton.disabled = this.player.gold < cost;
+          refreshButton.textContent = `刷新（-${cost} 金币）`;
+          const activeTierDef = tierDefs.find((tier) => tier.id === activeTier);
+          const tierName = activeTierDef ? activeTierDef.name : activeTier;
+          refreshTip.textContent = `${tierName} · 第 ${refreshCount + 1} 次刷新`;
+        }
       }
     }
 
     if (items) {
       items.innerHTML = '';
+      if (!shopUnlocked) {
+        const locked = document.createElement('div');
+        locked.className = 'shop-item';
+        locked.innerHTML = '<div class="shop-item-name">商店未开放</div><div class="shop-item-meta">触发商人事件后可进入并回访</div>';
+        items.appendChild(locked);
+        return;
+      }
       const activeTier = this.shopState.activeTier;
       if (!activeTier) {
         const empty = document.createElement('div');
