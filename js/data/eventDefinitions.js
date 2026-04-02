@@ -6,6 +6,7 @@
 const EVENT_TYPES = {
   COMBAT: 'combat',
   SHOP: 'shop',
+  REWARD: 'reward',
   REST: 'rest',
   STORY: 'story',
   TREASURE: 'treasure',
@@ -22,6 +23,10 @@ const EVENT_SUB_TYPES = {
     WEAPON: 'weapon',
     UTILITY: 'utility',
     MIXED: 'mixed'
+  },
+  REWARD: {
+    SMALL: 'small',
+    LARGE: 'large'
   },
   REST: {
     HEAL: 'heal',
@@ -92,6 +97,24 @@ const EVENT_DEFINITIONS = [
     unlocksShop: true
   },
   {
+    id: 'reward_small_01',
+    type: EVENT_TYPES.REWARD,
+    subType: EVENT_SUB_TYPES.REWARD.SMALL,
+    emoji: '🎁',
+    name: '小型奖励',
+    description: '获得一次基础奖励。',
+    tags: ['reward', 'resource']
+  },
+  {
+    id: 'reward_large_01',
+    type: EVENT_TYPES.REWARD,
+    subType: EVENT_SUB_TYPES.REWARD.LARGE,
+    emoji: '💎',
+    name: '大型奖励',
+    description: '获得一次高档奖励。',
+    tags: ['reward', 'resource']
+  },
+  {
     id: 'rest_heal_01',
     type: EVENT_TYPES.REST,
     subType: EVENT_SUB_TYPES.REST.HEAL,
@@ -145,6 +168,7 @@ function getEventTypeEmoji(type) {
   const map = {
     [EVENT_TYPES.COMBAT]: '⚔️',
     [EVENT_TYPES.SHOP]: '🛒',
+    [EVENT_TYPES.REWARD]: '🎁',
     [EVENT_TYPES.REST]: '⛺',
     [EVENT_TYPES.STORY]: '📜',
     [EVENT_TYPES.TREASURE]: '🎁',

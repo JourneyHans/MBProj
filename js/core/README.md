@@ -58,6 +58,18 @@ Boss gate 同步在 `Game` 内判定，并要求三条件同时满足：
 - 商店未开放时，档位按钮/刷新/商品区均显示“未开放”状态，避免误入
 - 商人事件触发后仍沿用既有经济链路（战斗金币 -> 商店消费），不影响 Boss gate 与战斗结算
 
+### 事件开局预生成（AI-EVT-PREGEN-01）
+
+- 事件节点改为“开局一次性预生成”，地雷初始化后即固定 `type/subType/eventId`
+- 分配策略采用“数量约束 + 权重补齐”：
+  - Boss 固定 1
+  - Shop 保底 1、上限 2
+  - Reward 保底 1、上限 3
+  - 剩余槽位按 `CONFIG.events.typeWeights`（`combat/shop/reward`）加权补齐
+- Combat 子类型改为开局按 `CONFIG.events.preGeneration.combatSubTypeWeights` 预分配（`normal/hard/elite`）
+- Reveal/Encounter 阶段不再改写事件类型，`applyEncounterEventProfile` 仅保留占位语义
+- 战斗奖励档位与商店档位统一读取预生成节点，保证同一格在不同触发时机下结算一致
+
 ### 能量-抽牌循环（P3-B）
 
 1. 每次翻格操作获得能量（单次操作上限 +1，且受最大能量上限约束）

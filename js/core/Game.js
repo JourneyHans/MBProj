@@ -462,15 +462,19 @@ class Game {
     }
 
     if (cell && cell.isMine && cell.protected && !cell.monsterCleared) {
-      if (!cell.monsterType) {
-        const eventNode = this.ensureActEventNodeForCell(cell);
+      const eventNode = this.ensureActEventNodeForCell(cell);
+      if (this.isCombatEventNode(eventNode) && !cell.monsterType) {
         cell.monsterType = this.resolveMonsterTypeForEvent(eventNode, this.stats.turn || 1);
       }
       cell.monsterCleared = true;
-      const eventNode = this.ensureActEventNodeForCell(cell);
       this.transitionEventState(eventNode, 'pending');
       this.markEventResolved(eventNode);
       this.pushEventTimelineEntry(eventNode, '保护触发并结算');
+      if (eventNode && eventNode.type === EVENT_TYPES.SHOP) {
+        this.unlockShopByMerchantEvent();
+        const tierId = this.getShopTierForEventNode(eventNode);
+        this.openShopTier(tierId, 'encounter');
+      }
       this.stats.monstersResolved++;
       this.updateHUD();
       this.checkRunCompletion();
@@ -1146,6 +1150,10 @@ class Game {
     if (this.activeMonsterEncounter && this.isActiveMonsterCell(cell.row, cell.col)) return;
     if (cell.monsterCleared) return;
     const eventNode = this.ensureActEventNodeForCell(cell);
+    if (eventNode && !this.isCombatEventNode(eventNode)) {
+      this.resolveNonCombatEventNode(cell, eventNode);
+      return;
+    }
 
     if (eventNode && eventNode.type === EVENT_TYPES.BOSS && !this.canEnterBossGate()) {
       this.transitionEventState(eventNode, 'revealed');
@@ -1176,7 +1184,6 @@ class Game {
       col: cell.col,
       ...encounter
     };
-    this.applyEncounterEventProfile(this.activeMonsterEncounter, eventNode);
     this.transitionEventState(eventNode, 'pending');
     this.ensureEncounterEnergyFloor();
     if (this.gridRenderer) {
@@ -1223,13 +1230,11 @@ class Game {
     this.stats.monstersResolved++;
     this.stats.hardPassStreak = viaHardPass ? this.stats.hardPassStreak + 1 : 0;
 
-    const rewardDifficulty = eventNode && eventNode.subType === EVENT_SUB_TYPES.COMBAT.ELITE
-      ? 'elite'
-      : (eventNode && eventNode.subType === EVENT_SUB_TYPES.COMBAT.HARD ? 'hard' : 'normal');
+    const rewardDifficulty = this.resolveRewardDifficultyForEventNode(eventNode);
     const goldReward = Math.max(0, Number(getMonsterGoldReward(encounterSnapshot.id, rewardDifficulty)) || 0);
     this.player.gold += goldReward;
 
-    if (eventNode && eventNode.type === EVENT_TYPES.COMBAT) {
+    if (eventNode && (eventNode.type === EVENT_TYPES.COMBAT || eventNode.type === EVENT_TYPES.BOSS || eventNode.type === EVENT_TYPES.SHOP || eventNode.type === EVENT_TYPES.REWARD)) {
       this.unlockShopByMerchantEvent();
       const tierId = this.getShopTierForEventNode(eventNode);
       this.openShopTier(tierId, 'encounter');
@@ -1736,8 +1741,6 @@ class Game {
     if (!this.grid || !this.grid.initialized) return;
     if (!this.actState || this.actState.initialized) return;
 
-    const bossDef = this.resolveSingleEventDefinition(EVENT_TYPES.BOSS, EVENT_SUB_TYPES.BOSS.GATEKEEPER);
-    const combatDef = this.resolveSingleEventDefinition(EVENT_TYPES.COMBAT, EVENT_SUB_TYPES.COMBAT.NORMAL);
     const mines = [];
     const cells = this.grid.getAllCells();
     for (let r = 0; r < this.grid.rows; r++) {
@@ -1754,17 +1757,26 @@ class Game {
       return;
     }
 
-    const bossIndex = mines.length - 1;
-    mines.forEach((mineCell, index) => {
-      const isBoss = index === bossIndex;
+    const assignableMines = mines.slice();
+    this.shuffleArrayInPlace(assignableMines);
+    const bossMine = assignableMines.shift();
+    const plannedProfiles = this.buildPregeneratedEventProfiles(assignableMines.length);
+    this.shuffleArrayInPlace(plannedProfiles);
+
+    mines.forEach((mineCell) => {
       const key = this.getEventNodeKey(mineCell.row, mineCell.col);
+      const isBoss = bossMine && mineCell.row === bossMine.row && mineCell.col === bossMine.col;
+      const profile = isBoss
+        ? this.createEventProfile(EVENT_TYPES.BOSS, EVENT_SUB_TYPES.BOSS.GATEKEEPER, 'boss_gatekeeper_01')
+        : (plannedProfiles.pop()
+          || this.createEventProfile(EVENT_TYPES.COMBAT, EVENT_SUB_TYPES.COMBAT.NORMAL, 'combat_normal_01'));
       this.actState.nodes[key] = {
         key,
         row: mineCell.row,
         col: mineCell.col,
-        eventId: isBoss ? bossDef?.id || 'boss_gatekeeper_01' : combatDef?.id || 'combat_normal_01',
-        type: isBoss ? EVENT_TYPES.BOSS : EVENT_TYPES.COMBAT,
-        subType: isBoss ? EVENT_SUB_TYPES.BOSS.GATEKEEPER : EVENT_SUB_TYPES.COMBAT.NORMAL,
+        eventId: profile.eventId,
+        type: profile.type,
+        subType: profile.subType,
         state: 'hidden',
         countedForGate: false
       };
@@ -1791,18 +1803,199 @@ class Game {
     const key = this.getEventNodeKey(cell.row, cell.col);
     if (this.actState.nodes[key]) return this.actState.nodes[key];
 
-    const combatDef = this.resolveSingleEventDefinition(EVENT_TYPES.COMBAT, EVENT_SUB_TYPES.COMBAT.NORMAL);
     this.actState.nodes[key] = {
       key,
       row: cell.row,
       col: cell.col,
-      eventId: combatDef?.id || 'combat_normal_01',
-      type: EVENT_TYPES.COMBAT,
-      subType: EVENT_SUB_TYPES.COMBAT.NORMAL,
+      ...this.createEventProfile(EVENT_TYPES.COMBAT, EVENT_SUB_TYPES.COMBAT.NORMAL, 'combat_normal_01'),
       state: 'hidden',
       countedForGate: false
     };
     return this.actState.nodes[key];
+  }
+
+  /**
+   * Build one event profile with fallback id.
+   * @param {string} type
+   * @param {string} subType
+   * @param {string} fallbackEventId
+   * @returns {{type:string, subType:string, eventId:string}}
+   */
+  createEventProfile(type, subType, fallbackEventId) {
+    const def = this.resolveSingleEventDefinition(type, subType);
+    return {
+      type,
+      subType,
+      eventId: def && def.id ? def.id : fallbackEventId
+    };
+  }
+
+  /**
+   * Build non-boss profile list by constrained guarantees + weighted fill.
+   * @param {number} slots
+   * @returns {Array<Object>}
+   */
+  buildPregeneratedEventProfiles(slots) {
+    const profiles = [];
+    if (slots <= 0) return profiles;
+
+    const counts = this.buildPregeneratedEventTypeCounts(slots);
+    for (let i = 0; i < counts.shop; i++) {
+      profiles.push(this.createShopEventProfile());
+    }
+    for (let i = 0; i < counts.reward; i++) {
+      profiles.push(this.createRewardEventProfile());
+    }
+    for (let i = 0; i < counts.combat; i++) {
+      profiles.push(this.createCombatEventProfile());
+    }
+    return profiles;
+  }
+
+  /**
+   * Allocate type counts for non-boss nodes.
+   * Priority under shortage: Shop guarantee > Reward guarantee > Combat.
+   * @param {number} slots
+   * @returns {{shop:number,reward:number,combat:number}}
+   */
+  buildPregeneratedEventTypeCounts(slots) {
+    const cfg = this.getEventPreGenerationConfig();
+    const counts = { shop: 0, reward: 0, combat: 0 };
+    if (slots <= 0) return counts;
+
+    counts.shop = Math.min(cfg.shop.min, slots);
+    let remaining = slots - counts.shop;
+    counts.reward = Math.min(cfg.reward.min, remaining);
+    remaining -= counts.reward;
+    counts.combat = 0;
+
+    while (remaining > 0) {
+      const weightedCandidates = [];
+      if (counts.shop < cfg.shop.max) {
+        weightedCandidates.push({ key: 'shop', weight: cfg.typeWeights.shop });
+      }
+      if (counts.reward < cfg.reward.max) {
+        weightedCandidates.push({ key: 'reward', weight: cfg.typeWeights.reward });
+      }
+      weightedCandidates.push({ key: 'combat', weight: cfg.typeWeights.combat });
+      const selected = this.pickWeightedKey(weightedCandidates, 'combat');
+      counts[selected] += 1;
+      remaining -= 1;
+    }
+
+    return counts;
+  }
+
+  /**
+   * @returns {Object}
+   */
+  getEventPreGenerationConfig() {
+    const eventsCfg = CONFIG.events || {};
+    const pre = eventsCfg.preGeneration || {};
+    const toSafeInt = (value, fallback) => {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : fallback;
+    };
+    const shopMin = toSafeInt(pre.shop && pre.shop.min, 1);
+    const shopMax = Math.max(shopMin, toSafeInt(pre.shop && pre.shop.max, 2));
+    const rewardMin = toSafeInt(pre.reward && pre.reward.min, 1);
+    const rewardMax = Math.max(rewardMin, toSafeInt(pre.reward && pre.reward.max, 3));
+    const typeWeights = eventsCfg.typeWeights || {};
+    return {
+      shop: { min: shopMin, max: shopMax },
+      reward: { min: rewardMin, max: rewardMax },
+      typeWeights: {
+        combat: Math.max(0, Number(typeWeights.combat) || 0),
+        shop: Math.max(0, Number(typeWeights.shop) || 0),
+        reward: Math.max(0, Number(typeWeights.reward) || 0)
+      }
+    };
+  }
+
+  /**
+   * @returns {{type:string,subType:string,eventId:string}}
+   */
+  createCombatEventProfile() {
+    const subType = this.rollCombatEventSubType();
+    return this.createEventProfile(EVENT_TYPES.COMBAT, subType, 'combat_normal_01');
+  }
+
+  /**
+   * @returns {{type:string,subType:string,eventId:string}}
+   */
+  createShopEventProfile() {
+    const subType = EVENT_SUB_TYPES.SHOP.MIXED;
+    return this.createEventProfile(EVENT_TYPES.SHOP, subType, 'shop_mixed_01');
+  }
+
+  /**
+   * @returns {{type:string,subType:string,eventId:string}}
+   */
+  createRewardEventProfile() {
+    const subType = this.rollRewardEventSubType();
+    return this.createEventProfile(EVENT_TYPES.REWARD, subType, 'reward_small_01');
+  }
+
+  /**
+   * @returns {string}
+   */
+  rollCombatEventSubType() {
+    const weights = CONFIG.events?.preGeneration?.combatSubTypeWeights || {};
+    const options = [
+      { key: EVENT_SUB_TYPES.COMBAT.NORMAL, weight: Math.max(0, Number(weights.normal) || 0) },
+      { key: EVENT_SUB_TYPES.COMBAT.HARD, weight: Math.max(0, Number(weights.hard) || 0) },
+      { key: EVENT_SUB_TYPES.COMBAT.ELITE, weight: Math.max(0, Number(weights.elite) || 0) }
+    ];
+    return this.pickWeightedKey(options, EVENT_SUB_TYPES.COMBAT.NORMAL);
+  }
+
+  /**
+   * @returns {string}
+   */
+  rollRewardEventSubType() {
+    const weights = CONFIG.events?.preGeneration?.rewardSubTypeWeights || {};
+    const options = [
+      { key: EVENT_SUB_TYPES.REWARD.SMALL, weight: Math.max(0, Number(weights.small) || 0) },
+      { key: EVENT_SUB_TYPES.REWARD.LARGE, weight: Math.max(0, Number(weights.large) || 0) }
+    ];
+    return this.pickWeightedKey(options, EVENT_SUB_TYPES.REWARD.SMALL);
+  }
+
+  /**
+   * Weighted random key picker.
+   * @param {Array<{key:string,weight:number}>} options
+   * @param {string} fallbackKey
+   * @returns {string}
+   */
+  pickWeightedKey(options, fallbackKey) {
+    const valid = Array.isArray(options)
+      ? options.filter((item) => item && item.key && Number(item.weight) > 0)
+      : [];
+    if (valid.length <= 0) return fallbackKey;
+    const totalWeight = valid.reduce((sum, item) => sum + Number(item.weight), 0);
+    if (totalWeight <= 0) return fallbackKey;
+    let roll = Math.random() * totalWeight;
+    for (let i = 0; i < valid.length; i++) {
+      roll -= Number(valid[i].weight);
+      if (roll <= 0) {
+        return valid[i].key;
+      }
+    }
+    return valid[valid.length - 1].key;
+  }
+
+  /**
+   * In-place Fisher-Yates shuffle.
+   * @param {Array<any>} list
+   */
+  shuffleArrayInPlace(list) {
+    if (!Array.isArray(list) || list.length <= 1) return;
+    for (let i = list.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = list[i];
+      list[i] = list[j];
+      list[j] = tmp;
+    }
   }
 
   /**
@@ -1857,19 +2050,8 @@ class Game {
    * @param {Object|null} eventNode
    */
   applyEncounterEventProfile(encounter, eventNode) {
-    if (!encounter || !eventNode || eventNode.type !== EVENT_TYPES.COMBAT) return;
-    const tier = Number(encounter.tier) || 1;
-    if (tier >= 3) {
-      eventNode.subType = EVENT_SUB_TYPES.COMBAT.ELITE;
-    } else if (tier >= 2) {
-      eventNode.subType = EVENT_SUB_TYPES.COMBAT.HARD;
-    } else {
-      eventNode.subType = EVENT_SUB_TYPES.COMBAT.NORMAL;
-    }
-    const def = this.resolveSingleEventDefinition(EVENT_TYPES.COMBAT, eventNode.subType);
-    if (def && def.id) {
-      eventNode.eventId = def.id;
-    }
+    // Keep as a no-op placeholder: type/subType/eventId are pre-generated at act init.
+    if (!encounter || !eventNode) return;
   }
 
   /**
@@ -2059,9 +2241,66 @@ class Game {
    */
   getShopTierForEventNode(eventNode) {
     if (!eventNode) return 'basic';
-    if (eventNode.type === EVENT_TYPES.BOSS || eventNode.subType === EVENT_SUB_TYPES.COMBAT.ELITE) return 'elite';
+    if (eventNode.type === EVENT_TYPES.BOSS) return 'elite';
+    if (eventNode.type === EVENT_TYPES.SHOP) return 'advanced';
+    if (eventNode.type === EVENT_TYPES.REWARD) {
+      return eventNode.subType === EVENT_SUB_TYPES.REWARD.LARGE ? 'elite' : 'basic';
+    }
+    if (eventNode.subType === EVENT_SUB_TYPES.COMBAT.ELITE) return 'elite';
     if (eventNode.subType === EVENT_SUB_TYPES.COMBAT.HARD) return 'advanced';
     return 'basic';
+  }
+
+  /**
+   * Resolve gold reward tier from pre-generated node profile.
+   * @param {Object|null} eventNode
+   * @returns {'normal'|'hard'|'elite'}
+   */
+  resolveRewardDifficultyForEventNode(eventNode) {
+    if (!eventNode) return 'normal';
+    if (eventNode.type === EVENT_TYPES.BOSS) return 'elite';
+    if (eventNode.type === EVENT_TYPES.SHOP) return 'hard';
+    if (eventNode.type === EVENT_TYPES.REWARD) {
+      return eventNode.subType === EVENT_SUB_TYPES.REWARD.LARGE ? 'elite' : 'hard';
+    }
+    if (eventNode.subType === EVENT_SUB_TYPES.COMBAT.ELITE) return 'elite';
+    if (eventNode.subType === EVENT_SUB_TYPES.COMBAT.HARD) return 'hard';
+    return 'normal';
+  }
+
+  /**
+   * @param {Object|null} eventNode
+   * @returns {boolean}
+   */
+  isCombatEventNode(eventNode) {
+    if (!eventNode) return false;
+    return eventNode.type === EVENT_TYPES.COMBAT || eventNode.type === EVENT_TYPES.BOSS;
+  }
+
+  /**
+   * Resolve non-combat nodes without entering monster combat.
+   * @param {Object} cell
+   * @param {Object} eventNode
+   */
+  resolveNonCombatEventNode(cell, eventNode) {
+    if (!cell || !eventNode || this.isCombatEventNode(eventNode)) return;
+    this.transitionEventState(eventNode, 'pending');
+    this.markEventResolved(eventNode);
+    this.pushEventTimelineEntry(eventNode, '非战斗事件结算');
+    cell.monsterCleared = true;
+    this.stats.monstersResolved++;
+
+    if (eventNode.type === EVENT_TYPES.SHOP) {
+      this.unlockShopByMerchantEvent();
+      const tierId = this.getShopTierForEventNode(eventNode);
+      this.openShopTier(tierId, 'encounter');
+    }
+
+    if (this.gridRenderer) {
+      this.gridRenderer.markDirty(cell);
+    }
+    this.updateHUD();
+    this.checkRunCompletion();
   }
 
   /**

@@ -61,11 +61,18 @@
 
 `eventDefinitions.js` 提供统一字段：
 
-- `type`：主类型（`combat/shop/rest/story/treasure/boss`）
-- `subType`：子类型（如 `combat.normal`、`combat.elite`、`boss.gatekeeper`）
+- `type`：主类型（`combat/shop/reward/rest/story/treasure/boss`）
+- `subType`：子类型（如 `combat.normal`、`combat.elite`、`reward.small`、`boss.gatekeeper`）
 - `id/name/description/tags`：事件基础元数据
 - `unlocksShop`：可选字段，标记该事件是否用于解锁商店访问（当前 `shop_mixed_01=true`）
 - `rewardProfile`：可选奖励倍率/品质标签
+
+当前核心运行时会直接消费以下主类型：
+
+- `combat`：战斗事件（含 `normal/hard/elite`）
+- `shop`：商店事件
+- `reward`：奖励事件（`small/large`）
+- `boss`：Boss 事件
 
 并提供查询函数：
 
@@ -92,6 +99,7 @@
 事件系统参数统一放在 `CONFIG.events`：
 
 - `typeWeights`：事件主类型权重
+- `preGeneration`：开局预生成参数（保底/上限、Combat 子类型权重、Reward 子类型权重）
 - `bossThresholds`：Boss 放行门槛（关卡/精英击杀等）
 - `shop.tiers`：商店档位解锁与槽位
 - `shop.refreshCosts`：刷新费用曲线
