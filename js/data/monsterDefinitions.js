@@ -8,7 +8,7 @@ const MONSTER_DEFINITIONS = {
     id: 'slime',
     name: '史莱姆',
     emoji: '🟢',
-    clearedEmoji: '💧',
+    clearedEmoji: '❌',
     rarity: 'common',
     description: '基础怪物，属性均衡。',
     goldReward: {
@@ -43,8 +43,8 @@ const MONSTER_DEFINITIONS = {
   brute: {
     id: 'brute',
     name: '蛮兽',
-    emoji: '🦬',
-    clearedEmoji: '🦴',
+    emoji: '🐗',
+    clearedEmoji: '❌',
     rarity: 'rare',
     description: '高生命近战怪，出手沉重。',
     goldReward: {
@@ -80,7 +80,7 @@ const MONSTER_DEFINITIONS = {
     id: 'spiker',
     name: '刺针怪',
     emoji: '🦔',
-    clearedEmoji: '🪡',
+    clearedEmoji: '❌',
     rarity: 'rare',
     description: '外壳带刺，对近身攻击更耐受。',
     goldReward: {
@@ -116,7 +116,7 @@ const MONSTER_DEFINITIONS = {
     id: 'phantom',
     name: '幽影',
     emoji: '👻',
-    clearedEmoji: '✨',
+    clearedEmoji: '❌',
     rarity: 'epic',
     description: '高机动敌人，后期更常见。',
     goldReward: {
