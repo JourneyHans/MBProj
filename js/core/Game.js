@@ -567,6 +567,40 @@ class Game {
   }
 
   /**
+   * Show reward popup after defeating a monster.
+   * @param {Object} rewardData
+   * @param {string} rewardData.name
+   * @param {string} rewardData.emoji
+   * @param {number} rewardData.goldReward
+   * @param {number} rewardData.currentGold
+   * @param {string} rewardData.difficulty
+   */
+  showMonsterRewardDialog(rewardData = {}) {
+    const {
+      name = '怪物',
+      emoji = '👾',
+      goldReward = 0,
+      currentGold = 0,
+      difficulty = 'normal'
+    } = rewardData;
+
+    const difficultyLabelMap = {
+      normal: '普通',
+      hard: '困难',
+      elite: '精英'
+    };
+    const difficultyLabel = difficultyLabelMap[difficulty] || '普通';
+
+    EventBus.emit('showDialog', {
+      title: '战斗奖励',
+      message: `${emoji} ${name}（${difficultyLabel}）已击败！\n获得 ${goldReward} 金币。\n当前金币：${currentGold}`,
+      actions: [
+        { label: '继续', action: null }
+      ]
+    });
+  }
+
+  /**
    * Get current game state
    * @returns {string} Current state
    */
@@ -1209,6 +1243,15 @@ class Game {
     }
     if (goldReward > 0) {
       this.showToast(`获得 ${goldReward} 金币。`, 1200);
+      if (!viaHardPass) {
+        this.showMonsterRewardDialog({
+          name: encounterSnapshot.name,
+          emoji: encounterSnapshot.emoji,
+          goldReward,
+          currentGold: this.player.gold,
+          difficulty: rewardDifficulty
+        });
+      }
     }
 
     this.beginPlayerTurn('遭遇结算');
