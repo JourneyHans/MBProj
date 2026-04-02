@@ -18,10 +18,6 @@
                 <span class="hud-value" id="mines-count">0</span>
             </div>
             <div class="hud-item">
-                <span class="hud-label">HP</span>
-                <span class="hud-value" id="hp-count">5</span>
-            </div>
-            <div class="hud-item">
                 <span class="hud-label">Time</span>
                 <span class="hud-value" id="time-elapsed">0</span>
             </div>
@@ -39,6 +35,23 @@
                 <div id="hand-container">
             <!-- Energy Bar -->
             <div id="energy-bar">
+                <div class="resource-block resource-block-hp">
+                    <div class="resource-name">血量</div>
+                    <div class="resource-display">
+                        <span id="hp-current">5/5</span>
+                    </div>
+                    <div id="hp-orbs" class="resource-orbs">
+                        <div class="resource-orb resource-orb-hp active"></div>
+                        <div class="resource-orb resource-orb-hp active"></div>
+                        <div class="resource-orb resource-orb-hp active"></div>
+                        <div class="resource-orb resource-orb-hp active"></div>
+                        <div class="resource-orb resource-orb-hp active"></div>
+                    </div>
+                </div>
+
+                <div class="resource-divider"></div>
+
+                <div class="resource-block resource-block-energy">
                 <div class="energy-label">能量</div>
                 <div class="energy-display">
                     <span id="energy-current">3/6</span>
@@ -50,6 +63,7 @@
                     <div class="energy-orb"></div>
                     <div class="energy-orb"></div>
                     <div class="energy-orb"></div>
+                </div>
                 </div>
             </div>
 
@@ -156,6 +170,7 @@
         // Initialize game when DOM is loaded
         document.addEventListener('DOMContentLoaded', () => {
             const canvas = document.getElementById('game-canvas');
+            let hpMax = Math.max(1, Number(CONFIG?.player?.startHp) || 5);
 
             // Initialize AudioManager (gracefully no-ops if Howler CDN failed)
             AudioManager.init();
@@ -187,7 +202,9 @@
                 const seconds = Math.floor(data.timeElapsed / 1000);
                 document.getElementById('time-elapsed').textContent = seconds;
                 if (data.hp !== undefined) {
-                    document.getElementById('hp-count').textContent = data.hp;
+                    const hpValue = Math.max(0, Math.floor(Number(data.hp) || 0));
+                    hpMax = Math.max(hpMax, hpValue, 1);
+                    renderHpDisplay(hpValue, hpMax);
                 }
             });
 
@@ -199,12 +216,25 @@
             });
 
             // Ensure HUD has a sensible initial HP before the first run starts.
-            const hpEl = document.getElementById('hp-count');
-            if (hpEl) {
-                const startHp = Number(CONFIG?.player?.startHp);
-                hpEl.textContent = Number.isFinite(startHp) && startHp > 0 ? Math.floor(startHp) : 5;
-            }
+            renderHpDisplay(hpMax, hpMax);
         });
+
+        function renderHpDisplay(current, max) {
+            const hpCurrentEl = document.getElementById('hp-current');
+            const hpOrbsEl = document.getElementById('hp-orbs');
+            if (!hpCurrentEl || !hpOrbsEl) return;
+
+            const safeMax = Math.max(1, Math.floor(Number(max) || 1));
+            const safeCurrent = Math.max(0, Math.floor(Number(current) || 0));
+            hpCurrentEl.textContent = `${safeCurrent}/${safeMax}`;
+
+            hpOrbsEl.innerHTML = '';
+            for (let i = 0; i < safeMax; i++) {
+                const orb = document.createElement('div');
+                orb.className = `resource-orb resource-orb-hp ${i < safeCurrent ? 'active' : ''}`;
+                hpOrbsEl.appendChild(orb);
+            }
+        }
 
         // Show dialog function
         function showDialog(title, message, actions) {
