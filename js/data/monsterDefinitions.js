@@ -147,6 +147,43 @@ const MONSTER_DEFINITIONS = {
       mid: 10,
       late: 20
     }
+  },
+  act1_gatekeeper: {
+    id: 'act1_gatekeeper',
+    name: '深渊守门者',
+    emoji: '😈',
+    clearedEmoji: '❌',
+    rarity: 'legendary',
+    description: '第一幕固定 Boss，拥有更高生命与稳定输出。',
+    goldReward: {
+      normal: 10,
+      hard: 14,
+      elite: 20
+    },
+    stats: {
+      baseHp: 8,
+      hpPerTier: 2,
+      baseAttack: 3,
+      attackPerTier: 1
+    },
+    damageProfile: {},
+    resistanceTag: 'boss',
+    tagModifiers: {
+      physical: 0,
+      technical: 1,
+      pierce: 0
+    },
+    intentProfile: {
+      type: 'attack',
+      ratio: 1.2,
+      bonus: 1
+    },
+    // Boss is fixed-spawn only and should never enter random encounter pool.
+    weights: {
+      early: 0,
+      mid: 0,
+      late: 0
+    }
   }
 };
 
