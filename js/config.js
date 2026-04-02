@@ -56,12 +56,28 @@ const CONFIG = {
   events: {
     bossMonsterType: 'act1_gatekeeper',
     typeWeights: {
-      combat: 45,
-      shop: 15,
-      rest: 15,
-      story: 10,
-      treasure: 10,
-      boss: 5
+      combat: 65,
+      shop: 20,
+      reward: 15
+    },
+    preGeneration: {
+      shop: {
+        min: 1,
+        max: 2
+      },
+      reward: {
+        min: 1,
+        max: 3
+      },
+      combatSubTypeWeights: {
+        normal: 65,
+        hard: 25,
+        elite: 10
+      },
+      rewardSubTypeWeights: {
+        small: 70,
+        large: 30
+      }
     },
     bossThresholds: {
       gatekeeperLevel: 5,
