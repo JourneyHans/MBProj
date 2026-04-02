@@ -39,6 +39,114 @@ const MONSTER_DEFINITIONS = {
       mid: 45,
       late: 35
     }
+  },
+  brute: {
+    id: 'brute',
+    name: '蛮兽',
+    emoji: '🦬',
+    clearedEmoji: '🦴',
+    rarity: 'rare',
+    description: '高生命近战怪，出手沉重。',
+    goldReward: {
+      normal: 3,
+      hard: 4,
+      elite: 6
+    },
+    stats: {
+      baseHp: 3,
+      hpPerTier: 2,
+      baseAttack: 1,
+      attackPerTier: 1
+    },
+    damageProfile: {},
+    resistanceTag: 'physical',
+    tagModifiers: {
+      physical: -1,
+      technical: 0,
+      pierce: 1
+    },
+    intentProfile: {
+      type: 'attack',
+      ratio: 1.1,
+      bonus: 0
+    },
+    weights: {
+      early: 25,
+      mid: 35,
+      late: 30
+    }
+  },
+  spiker: {
+    id: 'spiker',
+    name: '刺针怪',
+    emoji: '🦔',
+    clearedEmoji: '🪡',
+    rarity: 'rare',
+    description: '外壳带刺，对近身攻击更耐受。',
+    goldReward: {
+      normal: 3,
+      hard: 5,
+      elite: 7
+    },
+    stats: {
+      baseHp: 2,
+      hpPerTier: 1,
+      baseAttack: 2,
+      attackPerTier: 1
+    },
+    damageProfile: {},
+    resistanceTag: 'technical',
+    tagModifiers: {
+      physical: -1,
+      technical: 0,
+      pierce: 1
+    },
+    intentProfile: {
+      type: 'attack',
+      ratio: 1.0,
+      bonus: 1
+    },
+    weights: {
+      early: 15,
+      mid: 20,
+      late: 25
+    }
+  },
+  phantom: {
+    id: 'phantom',
+    name: '幽影',
+    emoji: '👻',
+    clearedEmoji: '✨',
+    rarity: 'epic',
+    description: '高机动敌人，后期更常见。',
+    goldReward: {
+      normal: 4,
+      hard: 6,
+      elite: 9
+    },
+    stats: {
+      baseHp: 2,
+      hpPerTier: 1,
+      baseAttack: 2,
+      attackPerTier: 1
+    },
+    damageProfile: {},
+    resistanceTag: 'pierce',
+    tagModifiers: {
+      physical: 0,
+      technical: 1,
+      pierce: -1
+    },
+    intentProfile: {
+      type: 'attack',
+      ratio: 1.2,
+      bonus: 0
+    },
+    weights: {
+      early: 0,
+      mid: 10,
+      late: 20
+    }
   }
 };
 
