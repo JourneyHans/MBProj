@@ -22,7 +22,8 @@ import {
   EVENT_TYPES,
   EVENT_SUB_TYPES,
   getEventDefinition,
-  getEventDefinitionsByTypeAndSubType
+  getEventDefinitionsByTypeAndSubType,
+  getEventTypeEmoji
 } from '../data/eventDefinitions.js';
 import { getAllShopDefinitions, resolveShopRefreshCost } from '../data/shopDefinitions.js';
 import CARD_DEFINITIONS from '../data/cardDefinitions.js';
@@ -2020,8 +2021,10 @@ class Game {
     if (!eventNode) return;
     const eventDef = getEventDefinition(eventNode.eventId) || this.resolveSingleEventDefinition(eventNode.type, eventNode.subType);
     const title = eventDef && eventDef.name ? eventDef.name : `${eventNode.type}/${eventNode.subType}`;
+    const icon = eventDef && eventDef.emoji ? eventDef.emoji : getEventTypeEmoji(eventNode.type);
     this.eventTimeline.unshift({
       id: `${eventNode.key}-${eventNode.state}-${Date.now()}`,
+      icon,
       title,
       state: eventNode.state,
       reason
@@ -2050,16 +2053,18 @@ class Game {
     const merchantDef = this.resolveSingleEventDefinition(EVENT_TYPES.SHOP, EVENT_SUB_TYPES.SHOP.MIXED);
     const merchantId = merchantDef && merchantDef.id ? merchantDef.id : 'shop_mixed_01';
     const merchantName = merchantDef && merchantDef.name ? merchantDef.name : '黑市商人';
+    const merchantIcon = merchantDef && merchantDef.emoji ? merchantDef.emoji : getEventTypeEmoji(EVENT_TYPES.SHOP);
     this.shopState.unlocked = true;
     this.shopState.unlockEventId = merchantId;
     this.eventTimeline.unshift({
       id: `merchant-unlock-${Date.now()}`,
+      icon: merchantIcon,
       title: merchantName,
       state: 'resolved',
       reason: '商人事件触发，商店已开放'
     });
     this.eventTimeline = this.eventTimeline.slice(0, 8);
-    this.showToast('黑市商人现身：商店已开放，本幕可回访。', 1400);
+    this.showToast(`${merchantIcon} 黑市商人现身：商店已开放，本幕可回访。`, 1400);
   }
 
   /**
@@ -2236,7 +2241,7 @@ class Game {
     if (brief) {
       const latest = this.eventTimeline[0];
       brief.textContent = latest
-        ? `最近事件：${latest.title}（${latest.state}）${latest.reason ? ` · ${latest.reason}` : ''}`
+        ? `最近事件：${latest.icon || '❔'} ${latest.title}（${latest.state}）${latest.reason ? ` · ${latest.reason}` : ''}`
         : '尚未翻开事件。';
     }
     if (timeline) {
@@ -2250,7 +2255,7 @@ class Game {
         this.eventTimeline.forEach((entry) => {
           const pill = document.createElement('span');
           pill.className = 'event-pill';
-          pill.textContent = `${entry.title} · ${entry.state}`;
+          pill.textContent = `${entry.icon || '❔'} ${entry.title} · ${entry.state}`;
           timeline.appendChild(pill);
         });
       }
