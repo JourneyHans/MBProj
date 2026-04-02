@@ -12,6 +12,7 @@
 3. `AI-EVT-UI-01`（依赖 CORE）
 4. `AI-EVT-QA-01`（可并行准备，最后收口）
 5. `AI-EVT-SHOP-SEM-01`（依赖 CORE + UI，用于修正商店触发语义）
+6. `AI-EVT-PREGEN-01`（依赖 DATA + CORE，用于开局预生成事件类型）
 
 ---
 
@@ -391,6 +392,98 @@
 交付动作（强制）：
 1) git add && git commit
 2) git push 到 feature/ai-evt-shop-sem-01（或当前任务分支）
+3) 输出 git status -sb
+4) 输出 git log -1 --oneline
+5) 输出 git push 原始结果
+6) 更新文档：对应模块 README + RELEASE_NOTES.md + ROADMAP.md + SMOKE_TEST.md
+7) 运行最小校验（至少保证无明显报错）
+8) 校验通过后，合并到 main 并 push main；若失败则禁止合并并回报原因
+
+完成后按统一回报格式输出。
+```
+
+---
+
+## 4.6 AI-EVT-PREGEN-01
+
+**目标**：将事件类型生成时机从“揭开时动态决定”改为“本局初始化时一次性预生成”。
+
+**允许修改**：
+- `js/core/Game.js`
+- `js/data/eventDefinitions.js`
+- `js/config.js`
+- `js/core/README.md`
+- `js/data/README.md`
+- `RELEASE_NOTES.md`
+- `ROADMAP.md`
+- `SMOKE_TEST.md`
+
+**禁止修改**：
+- 设计文档：`ACT_STRUCTURE_DESIGN.md`、`COMBAT_DESIGN.md`、`ENERGY_DRAW_LOOP_DESIGN.md`、`CARD_ROLE_MATRIX.md`、`EVENT_SYSTEM_DESIGN.md`
+- `index.html`（除非确有必要且任务说明明确）
+- `css/main.css`（除非确有必要且任务说明明确）
+- 其他未列出文件
+
+**必须满足**：
+1) 地雷生成完成后，事件节点统一预生成 `type/subType/eventId`
+2) 非 Boss 节点不再在揭开时改写事件类型
+3) `resolveMonsterEncounter` 的奖励/商店档位逻辑基于预生成事件类型
+4) 不回退 Boss gate、战斗结算、金币结算、商店回访能力
+5) 采用“数量约束 + 权重补齐”的混合生成规则：
+   - Boss 固定 `1`
+   - Shop `min=1, max=2`
+   - Reward `min=1, max=3`
+   - 其余事件位按 `typeWeights` 分配（Combat 为主）
+6) Combat 子类型采用子权重分配（`normal/hard/elite`），并可通过配置调整
+7) 当事件位不足时，按优先级回退：`Boss > Shop保底 > Reward保底 > Combat`
+
+**DoD**：
+- 新局开始后 `actState.nodes` 中每个事件节点都具备固定类型信息
+- 同一格在不同触发时机下事件类型保持一致
+- `applyEncounterEventProfile` 不再承担“改事件类型”职责（可删除或仅做非类型处理）
+- `SMOKE_TEST.md` 增加“预生成一致性”回归项
+- 单局事件分布满足保底约束（至少 1 Shop、至少 1 Reward、固定 1 Boss）
+- 调整配置后（权重/保底）事件分布随配置生效
+
+**Prompt（直接投喂）**：
+```text
+你负责 Task: AI-EVT-PREGEN-01。
+
+目标：
+将事件类型生成时机从“揭开时动态决定”改为“本局初始化时一次性预生成”。
+
+允许修改：
+- js/core/Game.js
+- js/data/eventDefinitions.js
+- js/config.js
+- js/core/README.md
+- js/data/README.md
+- RELEASE_NOTES.md
+- ROADMAP.md
+- SMOKE_TEST.md
+
+禁止修改：
+- 设计文档：ACT_STRUCTURE_DESIGN.md、COMBAT_DESIGN.md、ENERGY_DRAW_LOOP_DESIGN.md、CARD_ROLE_MATRIX.md、EVENT_SYSTEM_DESIGN.md
+- index.html（除非确有必要且任务说明明确）
+- css/main.css（除非确有必要且任务说明明确）
+- 其他未列出文件
+
+必须满足：
+1) 地雷生成后一次性预生成事件 type/subType/eventId
+2) 揭开或遭遇时不再改写 eventNode 类型
+3) 奖励/商店档位按预生成类型结算
+4) 不破坏 Boss gate、战斗、金币、商店回访
+5) 使用“数量约束 + 权重补齐”：
+   - Boss 固定 1
+   - Shop min=1 max=2
+   - Reward min=1 max=3
+   - 剩余按 typeWeights 分配
+6) Combat 子类型按 normal/hard/elite 子权重分配
+7) 当事件位不足时按优先级回退：Boss > Shop保底 > Reward保底 > Combat
+
+交付动作（强制）：
+1) git add && git commit
+2) git push 到 feature/ai-evt-pregen-01（或当前任务分支）
 3) 输出 git status -sb
 4) 输出 git log -1 --oneline
 5) 输出 git push 原始结果
