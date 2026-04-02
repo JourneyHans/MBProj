@@ -27,31 +27,16 @@
             </div>
         </div>
 
-        <!-- Canvas Container -->
-        <div id="canvas-container">
-            <canvas id="game-canvas"></canvas>
-            <div id="monster-hover-info" style="display: none;"></div>
-        </div>
+        <div id="main-layout">
+            <div id="left-column">
+                <!-- Canvas Container -->
+                <div id="canvas-container">
+                    <canvas id="game-canvas"></canvas>
+                    <div id="monster-hover-info" style="display: none;"></div>
+                </div>
 
-        <!-- Event / Shop Panel -->
-        <div id="event-shop-panel">
-            <div class="event-shop-header">
-                <div class="event-shop-title">事件与商店</div>
-                <div class="event-shop-gold">金币：<span id="event-shop-gold">0</span></div>
-            </div>
-            <div id="event-brief" class="event-brief">尚未翻开事件。</div>
-            <div id="event-timeline" class="event-timeline"></div>
-
-            <div class="shop-tier-list" id="shop-tier-list"></div>
-            <div class="shop-actions">
-                <button id="shop-refresh-button" type="button">刷新（-0 金币）</button>
-                <span id="shop-refresh-tip">请先进入商店档位</span>
-            </div>
-            <div id="shop-items" class="shop-items"></div>
-        </div>
-
-        <!-- Hand Container -->
-        <div id="hand-container">
+                <!-- Hand Container -->
+                <div id="hand-container">
             <!-- Energy Bar -->
             <div id="energy-bar">
                 <div class="energy-label">能量</div>
@@ -103,15 +88,36 @@
                 </div>
             </div>
 
-            <div id="deck-pile-modal" style="display: none;">
-                <div class="discard-modal-panel">
-                    <div class="discard-modal-header">
-                        <span>牌库总览</span>
-                        <button id="deck-pile-close" type="button">关闭</button>
+                    <div id="deck-pile-modal" style="display: none;">
+                        <div class="discard-modal-panel">
+                            <div class="discard-modal-header">
+                                <span>牌库总览</span>
+                                <button id="deck-pile-close" type="button">关闭</button>
+                            </div>
+                            <div id="deck-pile-list" class="discard-pile-list"></div>
+                        </div>
                     </div>
-                    <div id="deck-pile-list" class="discard-pile-list"></div>
                 </div>
             </div>
+
+            <!-- Event / Shop Panel -->
+            <aside id="right-column">
+                <div id="event-shop-panel">
+                    <div class="event-shop-header">
+                        <div class="event-shop-title">事件与商店</div>
+                        <div class="event-shop-gold">金币：<span id="event-shop-gold">0</span></div>
+                    </div>
+                    <div id="event-brief" class="event-brief">尚未翻开事件。</div>
+                    <div id="event-timeline" class="event-timeline"></div>
+
+                    <div class="shop-tier-list" id="shop-tier-list"></div>
+                    <div class="shop-actions">
+                        <button id="shop-refresh-button" type="button">刷新（-0 金币）</button>
+                        <span id="shop-refresh-tip">请先进入商店档位</span>
+                    </div>
+                    <div id="shop-items" class="shop-items"></div>
+                </div>
+            </aside>
         </div>
     </div>
 

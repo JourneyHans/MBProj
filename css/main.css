@@ -37,9 +37,29 @@ body {
 #game-container {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: 20px;
   padding: 20px;
+}
+
+#main-layout {
+  width: min(1600px, 96vw);
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+#left-column {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+#right-column {
+  min-width: 0;
+  display: flex;
 }
 
 #canvas-container {
@@ -48,6 +68,10 @@ body {
   border-radius: 8px;
   padding: 20px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  min-height: 420px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 #game-canvas {
@@ -455,8 +479,8 @@ body {
 /* Landscape orientation on mobile */
 @media screen and (max-width: 768px) and (orientation: landscape) {
   #game-container {
-    flex-direction: row;
-    padding: 5px;
+    flex-direction: column;
+    padding: 8px;
   }
 
   #hud {
@@ -932,7 +956,7 @@ body {
 }
 
 #event-shop-panel {
-  width: min(1180px, 100%);
+  width: 100%;
   border: 1px solid #334155;
   border-radius: 10px;
   background: rgba(15, 23, 42, 0.94);
@@ -940,6 +964,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  height: 100%;
+  min-height: 0;
 }
 
 .event-shop-header {
@@ -1038,6 +1064,7 @@ body {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 10px;
+  overflow: auto;
 }
 
 .shop-item {
@@ -1195,4 +1222,51 @@ body {
   .card-description {
     font-size: 9px;
   }
+}
+
+/* ========================================
+   DESKTOP LANDSCAPE LOCKED LAYOUT
+   仅面向电脑横屏：固定左2右1，不做竖屏/窄屏回退
+   ======================================== */
+#game-container {
+  width: min(1700px, 98vw);
+  margin: 0 auto;
+}
+
+#main-layout {
+  display: grid !important;
+  width: 100%;
+  grid-template-columns: minmax(0, 2fr) minmax(360px, 1fr) !important;
+  gap: 16px;
+  min-height: calc(100vh - 180px);
+}
+
+#left-column {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-width: 0;
+  min-height: 0;
+  gap: 12px;
+}
+
+#right-column {
+  display: block;
+  min-width: 0;
+  order: initial !important;
+}
+
+#canvas-container {
+  min-height: 0;
+  height: 100%;
+}
+
+#hand-container {
+  max-height: 42vh;
+  overflow-y: auto;
+}
+
+#event-shop-panel {
+  height: 100%;
+  max-height: calc(100vh - 180px);
+  overflow-y: auto;
 }
