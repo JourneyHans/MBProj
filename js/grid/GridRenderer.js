@@ -151,14 +151,15 @@ class GridRenderer {
     } else if (cell.isMine) {
       bgColor = CONFIG.colors.cell.mine;
     } else {
-      bgColor = CONFIG.colors.cell.revealed;
+      // Revealed safe cells: brighter and flatter than covered tiles.
+      bgColor = '#2f4157';
     }
 
     this.ctx.fillStyle = bgColor;
     this.ctx.fillRect(x, y, this.cellSize, this.cellSize);
 
-    // Make uncovered cells visually distinct from covered cells.
-    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+    // Flat subtle border for revealed cells.
+    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
     this.ctx.lineWidth = 1;
     this.ctx.strokeRect(x + 0.5, y + 0.5, this.cellSize - 1, this.cellSize - 1);
 
@@ -178,16 +179,16 @@ class GridRenderer {
   drawCoverLayer(cell, x, y) {
     if (!cell.covered) return;
 
-    const bgColor = cell.flagged ? CONFIG.colors.cell.flag : '#243244';
+    const bgColor = cell.flagged ? CONFIG.colors.cell.flag : '#1b2432';
     this.ctx.fillStyle = bgColor;
     this.ctx.fillRect(x, y, this.cellSize, this.cellSize);
 
-    // Covered layer has stronger bevel to avoid confusion with revealed tiles.
-    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+    // Strong bevel for covered tiles: clearly raised compared to revealed layer.
+    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
     this.ctx.lineWidth = 1;
     this.ctx.strokeRect(x + 0.5, y + 0.5, this.cellSize - 1, this.cellSize - 1);
 
-    this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
+    this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.38)';
     this.ctx.strokeRect(x + 1.5, y + 1.5, this.cellSize - 3, this.cellSize - 3);
 
     if (cell.flagged) {
