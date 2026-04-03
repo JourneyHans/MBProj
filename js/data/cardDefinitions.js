@@ -21,7 +21,7 @@ const CARD_DEFINITIONS = {
         return { success: false, reason: '无效目标' };
       }
 
-      if (target.revealed) {
+      if (!target.covered) {
         return { success: false, reason: '无法保护已揭示的格子' };
       }
 

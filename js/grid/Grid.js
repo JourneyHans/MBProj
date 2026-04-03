@@ -12,7 +12,7 @@ class Grid {
     this.cols = cols;
     this.mineCount = mineCount;
     this.cells = [];
-    this.revealedCount = 0;
+    this.revealedSafeCount = 0;
     this.flaggedCount = 0;
     this.trippedMine = null;
     this.initialized = false;
@@ -40,7 +40,7 @@ class Grid {
    */
   initialize(firstClickCell) {
     // Reset stats
-    this.revealedCount = 0;
+    this.revealedSafeCount = 0;
     this.flaggedCount = 0;
     this.trippedMine = null;
 
@@ -125,8 +125,7 @@ class Grid {
     const cell = this.cells[row][col];
     if (!cell.canReveal()) return true; // Already revealed or flagged
 
-    cell.revealed = true;
-    this.revealedCount++;
+    cell.covered = false;
 
     if (cell.isMine) {
       if (cell.protected) {
@@ -137,6 +136,8 @@ class Grid {
       EventBus.emit('mineTripped', cell);
       return false;
     }
+
+    this.revealedSafeCount++;
 
     // Flood fill if cell has no adjacent mines
     if (cell.adjacentMines === 0) {
@@ -233,7 +234,7 @@ class Grid {
     const totalCells = this.rows * this.cols;
     const safeCells = totalCells - this.getActualMineCount();
 
-    if (this.revealedCount === safeCells) {
+    if (this.revealedSafeCount === safeCells) {
       EventBus.emit('gridComplete');
     }
   }
@@ -277,7 +278,7 @@ class Grid {
   reset() {
     this.initialized = false;
     this.trippedMine = null;
-    this.revealedCount = 0;
+    this.revealedSafeCount = 0;
     this.flaggedCount = 0;
 
     // Reset all cells
@@ -297,7 +298,7 @@ class Grid {
       rows: this.rows,
       cols: this.cols,
       mineCount: this.getActualMineCount(),
-      revealedCount: this.revealedCount,
+      revealedCount: this.revealedSafeCount,
       flaggedCount: this.flaggedCount,
       totalCells: this.rows * this.cols,
       safeCells: (this.rows * this.cols) - this.getActualMineCount(),

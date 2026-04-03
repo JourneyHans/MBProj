@@ -5,9 +5,9 @@
 
 ## 目录与职责
 
-- `Cell.js`：单格数据结构（`isMine/revealed/flagged/protected/highlighted/monsterType/monsterCleared`）
+- `Cell.js`：单格数据结构（信息层 + 遮盖层）
 - `Grid.js`：网格规则与格子操作（揭示、标记、邻格信息）
-- `GridRenderer.js`：Canvas 绘制与坐标映射
+- `GridRenderer.js`：Canvas 绘制与坐标映射（信息层先绘制，再叠加遮盖层）
 
 ## 设计思路
 
@@ -25,10 +25,18 @@
 
 ## 当前扩展点
 
+- `covered`：遮盖层开关，`true` 表示玩家尚未看到该格内容
 - `protected`：被卡牌保护的地雷可安全揭示
 - `highlighted`：用于探测类卡牌视觉提示
 - `isMine` 在后续语义上可映射为“潜伏怪物格”触发标记
 - `monsterType/monsterCleared`：怪物类型与结算状态，供战斗与渲染层复用
+
+## 双层模型约定（新增）
+
+- 信息层：`isMine/adjacentMines` 与预生成事件节点（`actState.nodes`）共同定义“格子真实内容”
+- 遮盖层：`covered/flagged` 定义玩家当前可见状态
+- 渲染顺序：先绘制信息层，再覆盖遮盖层；普通模式只看到未被遮盖的内容
+- 展示优先级：`activeEncounter > resolvedMonster > pregeneratedEvent`，避免回退到默认史莱姆造成误导
 
 ## 常用接口
 

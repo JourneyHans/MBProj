@@ -111,6 +111,7 @@ class Game {
 
     // Create grid renderer
     this.gridRenderer = new GridRenderer(canvas);
+    this.gridRenderer.setCellVisualResolver((cell) => this.resolveCellVisualProfile(cell));
 
     // Setup input handlers
     this.setupInputHandlers();
@@ -280,8 +281,8 @@ class Game {
     if (!this.grid) return;
     const clickedCell = this.grid.getCell(row, col);
 
-    // Clicking revealed unresolved mine cells should open or inspect encounter info.
-    if (clickedCell && clickedCell.revealed && clickedCell.isMine && !clickedCell.monsterCleared) {
+    // Clicking uncovered unresolved mine cells should open or inspect encounter info.
+    if (clickedCell && !clickedCell.covered && clickedCell.isMine && !clickedCell.monsterCleared) {
       if (this.activeMonsterEncounter && this.isActiveMonsterCell(row, col)) {
         const encounter = this.activeMonsterEncounter;
         const info = `${encounter.emoji} ${encounter.name} HP:${encounter.hp}/${encounter.maxHp} 意图:${encounter.intent.label}`;
@@ -297,9 +298,9 @@ class Game {
           this.showToast(info, 1600);
         }
       } else {
-        const def = getMonsterDefinition(clickedCell.monsterType);
-        const monsterName = def ? def.name : '未知怪物';
-        this.showToast(`检测到待处理怪物：${monsterName}。请先处理当前阻挡怪物。`, 1500);
+        const visual = this.resolveCellVisualProfile(clickedCell);
+        const eventName = visual && visual.name ? visual.name : '待处理事件';
+        this.showToast(`检测到待处理事件：${eventName}。请先处理当前阻挡遭遇。`, 1500);
       }
       return;
     }
@@ -504,7 +505,7 @@ class Game {
       for (let r = 0; r < this.grid.rows; r++) {
         for (let c = 0; c < this.grid.cols; c++) {
           if (cells[r][c].isMine) {
-            cells[r][c].revealed = true;
+            cells[r][c].covered = false;
             this.gridRenderer.markDirty(cells[r][c]);
           }
         }
@@ -975,7 +976,7 @@ class Game {
       return { valid: false, reason: '该卡只能在显形怪物遭遇中使用' };
     }
 
-    if (cell.revealed) {
+    if (!cell.covered) {
       return { valid: false, reason: '该目标已揭示' };
     }
 
@@ -1031,27 +1032,31 @@ class Game {
   }
 
   /**
-   * Show live monster info while hovering on revealed monster cells.
+   * Show live info while hovering on uncovered mine/event cells.
    * @param {Object|null} cell - Hovered grid cell
    */
   updateMonsterHoverInfo(cell) {
     const infoEl = document.getElementById('monster-hover-info');
     if (!infoEl) return;
 
-    if (!cell || !cell.revealed || !cell.isMine) {
+    if (!cell || cell.covered || !cell.isMine) {
       this.hideMonsterHoverInfo();
       return;
     }
 
-    const definition = getMonsterDefinition(cell.monsterType || 'slime');
+    const eventNode = this.getActEventNodeByCell(cell);
+    const visual = this.resolveCellVisualProfile(cell);
+    const definition = getMonsterDefinition(cell.monsterType || '');
     const isActive = this.activeMonsterEncounter
       && this.isActiveMonsterCell(cell.row, cell.col);
     const isCleared = Boolean(cell.monsterCleared);
 
-    const name = definition ? definition.name : '未知怪物';
-    const emoji = isCleared
-      ? (definition ? definition.clearedEmoji : '💀')
-      : (definition ? definition.emoji : '👾');
+    const name = visual && visual.name
+      ? visual.name
+      : (definition ? definition.name : '未知事件');
+    const emoji = visual && visual.emoji
+      ? visual.emoji
+      : (isCleared ? '💀' : '👾');
 
     let statusLine = '状态：待处理';
     let hpLine = 'HP：?/?';
@@ -1068,6 +1073,13 @@ class Game {
       hpLine = `HP：${this.activeMonsterEncounter.hp}/${this.activeMonsterEncounter.maxHp}`;
       intentLine = `意图：${this.activeMonsterEncounter.intent.label}`;
       attackLine = `攻击：${this.activeMonsterEncounter.attack}`;
+    } else if (eventNode && !this.isCombatEventNode(eventNode)) {
+      statusLine = `状态：${eventNode.type} 事件`;
+      hpLine = 'HP：N/A';
+      intentLine = '意图：交互事件';
+      attackLine = '攻击：0';
+    } else if (eventNode) {
+      intentLine = `意图：${eventNode.type}/${eventNode.subType}`;
     }
 
     infoEl.innerHTML = `
@@ -1397,7 +1409,7 @@ class Game {
     for (let r = 0; r < this.grid.rows; r++) {
       for (let c = 0; c < this.grid.cols; c++) {
         const cell = cells[r][c];
-        if (!cell.revealed || !cell.isMine || cell.monsterCleared) continue;
+        if (cell.covered || !cell.isMine || cell.monsterCleared) continue;
         const eventNode = this.getActEventNodeByCoords(r, c);
         if (
           eventNode &&
@@ -2024,6 +2036,53 @@ class Game {
   getActEventNodeByCell(cell) {
     if (!cell) return null;
     return this.getActEventNodeByCoords(cell.row, cell.col);
+  }
+
+  /**
+   * Resolve runtime visual profile for one mine/event cell.
+   * Priority: activeEncounter > resolvedMonster > pregeneratedEvent.
+   * @param {Object|null} cell
+   * @returns {{emoji:string,name:string,eventType?:string,eventSubType?:string}|null}
+   */
+  resolveCellVisualProfile(cell) {
+    if (!cell || !cell.isMine) return null;
+    const eventNode = this.getActEventNodeByCell(cell);
+
+    if (this.activeMonsterEncounter && this.isActiveMonsterCell(cell.row, cell.col)) {
+      return {
+        emoji: this.activeMonsterEncounter.emoji || '👾',
+        name: this.activeMonsterEncounter.name || '当前遭遇',
+        eventType: eventNode ? eventNode.type : EVENT_TYPES.COMBAT,
+        eventSubType: eventNode ? eventNode.subType : EVENT_SUB_TYPES.COMBAT.NORMAL
+      };
+    }
+
+    if (cell.monsterType) {
+      const def = getMonsterDefinition(cell.monsterType);
+      if (def) {
+        return {
+          emoji: cell.monsterCleared ? (def.clearedEmoji || '💀') : (def.emoji || '👾'),
+          name: def.name || '怪物事件',
+          eventType: eventNode ? eventNode.type : EVENT_TYPES.COMBAT,
+          eventSubType: eventNode ? eventNode.subType : EVENT_SUB_TYPES.COMBAT.NORMAL
+        };
+      }
+    }
+
+    if (eventNode) {
+      const eventDef = getEventDefinition(eventNode.eventId) || this.resolveSingleEventDefinition(eventNode.type, eventNode.subType);
+      return {
+        emoji: eventDef && eventDef.emoji ? eventDef.emoji : getEventTypeEmoji(eventNode.type),
+        name: eventDef && eventDef.name ? eventDef.name : `${eventNode.type}/${eventNode.subType}`,
+        eventType: eventNode.type,
+        eventSubType: eventNode.subType
+      };
+    }
+
+    return {
+      emoji: cell.monsterCleared ? '💀' : '👾',
+      name: '未知事件'
+    };
   }
 
   /**
@@ -2750,7 +2809,7 @@ class Game {
     for (let r = 0; r < this.grid.rows; r++) {
       for (let c = 0; c < this.grid.cols; c++) {
         const cell = this.grid.getCell(r, c);
-        if (!cell || !cell.revealed || !cell.isMine || cell.monsterCleared) continue;
+        if (!cell || cell.covered || !cell.isMine || cell.monsterCleared) continue;
 
         const isActive = this.activeMonsterEncounter &&
           this.isActiveMonsterCell(r, c);

@@ -9,7 +9,7 @@ class Cell {
 
     // Core properties
     this.isMine = false;
-    this.revealed = false;
+    this.covered = true;
     this.flagged = false;
 
     // Adjacency
@@ -27,7 +27,7 @@ class Cell {
    */
   reset() {
     this.isMine = false;
-    this.revealed = false;
+    this.covered = true;
     this.flagged = false;
     this.adjacentMines = 0;
     this.highlighted = false;
@@ -41,7 +41,7 @@ class Cell {
    * @returns {boolean} True if cell can be revealed
    */
   canReveal() {
-    return !this.revealed && !this.flagged;
+    return this.covered && !this.flagged;
   }
 
   /**
@@ -49,7 +49,7 @@ class Cell {
    * @returns {boolean} True if cell can be flagged
    */
   canFlag() {
-    return !this.revealed;
+    return this.covered;
   }
 
   /**
@@ -68,7 +68,7 @@ class Cell {
    * @returns {string} Cell state
    */
   getState() {
-    if (this.revealed) {
+    if (!this.covered) {
       return this.isMine ? 'mine' : 'revealed';
     }
     if (this.flagged) {
@@ -101,7 +101,7 @@ class Cell {
   clone() {
     const cloned = new Cell(this.row, this.col);
     cloned.isMine = this.isMine;
-    cloned.revealed = this.revealed;
+    cloned.covered = this.covered;
     cloned.flagged = this.flagged;
     cloned.adjacentMines = this.adjacentMines;
     cloned.highlighted = this.highlighted;

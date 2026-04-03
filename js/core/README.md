@@ -70,6 +70,12 @@ Boss gate 同步在 `Game` 内判定，并要求三条件同时满足：
 - Reveal/Encounter 阶段不再改写事件类型，`applyEncounterEventProfile` 仅保留占位语义
 - 战斗奖励档位与商店档位统一读取预生成节点，保证同一格在不同触发时机下结算一致
 
+### 事件可视语义收口（双层重构前置）
+
+- 事件可视化优先读取预生成 `eventNode`，不再把 `cell.monsterType` 作为唯一展示来源
+- 地雷格展示采用统一优先级：`activeEncounter > resolvedMonster > pregeneratedEvent`
+- 该收口用于消除“未遭遇前全部显示默认怪物”的伪像，为后续网格双层模型改造提供稳定基线
+
 ### 能量-抽牌循环（P3-B）
 
 1. 每次翻格操作获得能量（单次操作上限 +1，且受最大能量上限约束）

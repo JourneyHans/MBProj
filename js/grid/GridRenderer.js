@@ -16,6 +16,15 @@ class GridRenderer {
     this.needsFullRedraw = true;
     this.targetPreviewCell = null;
     this.targetPreviewValid = true;
+    this.cellVisualResolver = null;
+  }
+
+  /**
+   * Set optional cell visual resolver from Game runtime.
+   * @param {(cell:Object)=>Object|null} resolver
+   */
+  setCellVisualResolver(resolver) {
+    this.cellVisualResolver = typeof resolver === 'function' ? resolver : null;
   }
 
   /**
@@ -116,16 +125,10 @@ class GridRenderer {
     this.ctx.fillStyle = '#111827';
     this.ctx.fillRect(x - 1, y - 1, this.cellSize + 2, this.cellSize + 2);
 
-    // Draw cell background
-    this.drawCellBackground(cell, x, y);
-
-    // Draw cell content
-    this.drawCellContent(cell, x, y);
-
-    // Draw protected indicator on hidden cells
-    if (cell.protected && !cell.revealed) {
-      this.drawProtectedIndicator(x, y);
-    }
+    // Information layer: immutable board truth (numbers/mines/events).
+    this.drawInfoLayer(cell, x, y);
+    // Cover layer: what the player currently sees/has not uncovered.
+    this.drawCoverLayer(cell, x, y);
 
     // Draw highlight
     if (cell.highlighted) {
@@ -134,51 +137,52 @@ class GridRenderer {
   }
 
   /**
-   * Draw cell background
+   * Draw immutable board info (always based on actual cell data).
    * @param {Cell} cell - Cell to draw
    * @param {number} x - X position
    * @param {number} y - Y position
    */
-  drawCellBackground(cell, x, y) {
+  drawInfoLayer(cell, x, y) {
     let bgColor;
-
-    if (cell.revealed) {
-      if (cell.isMine && cell.protected) {
-        bgColor = '#166534';
-      } else if (cell.isMine && cell.monsterCleared) {
-        bgColor = '#14532d';
-      } else if (cell.isMine) {
-        bgColor = CONFIG.colors.cell.mine;
-      } else {
-        bgColor = CONFIG.colors.cell.revealed;
-      }
-    } else if (cell.flagged) {
-      bgColor = CONFIG.colors.cell.flag;
-    } else if (cell.highlighted) {
-      bgColor = CONFIG.colors.cell.highlighted;
+    if (cell.isMine && cell.protected) {
+      bgColor = '#166534';
+    } else if (cell.isMine && cell.monsterCleared) {
+      bgColor = '#14532d';
+    } else if (cell.isMine) {
+      bgColor = CONFIG.colors.cell.mine;
     } else {
-      bgColor = CONFIG.colors.cell.hidden;
+      bgColor = CONFIG.colors.cell.revealed;
     }
 
     this.ctx.fillStyle = bgColor;
     this.ctx.fillRect(x, y, this.cellSize, this.cellSize);
+
+    if (cell.isMine) {
+      this.drawMine(cell, x, y);
+    } else if (cell.adjacentMines > 0) {
+      this.drawNumber(cell.adjacentMines, x, y);
+    }
   }
 
   /**
-   * Draw cell content
+   * Draw current cover layer.
    * @param {Cell} cell - Cell to draw
    * @param {number} x - X position
    * @param {number} y - Y position
    */
-  drawCellContent(cell, x, y) {
-    if (cell.flagged && !cell.revealed) {
+  drawCoverLayer(cell, x, y) {
+    if (!cell.covered) return;
+
+    const bgColor = cell.flagged ? CONFIG.colors.cell.flag : CONFIG.colors.cell.hidden;
+    this.ctx.fillStyle = bgColor;
+    this.ctx.fillRect(x, y, this.cellSize, this.cellSize);
+
+    if (cell.flagged) {
       this.drawFlag(x, y);
-    } else if (cell.revealed) {
-      if (cell.isMine) {
-        this.drawMine(cell, x, y);
-      } else if (cell.adjacentMines > 0) {
-        this.drawNumber(cell.adjacentMines, x, y);
-      }
+    }
+
+    if (cell.protected) {
+      this.drawProtectedIndicator(x, y);
     }
   }
 
@@ -216,7 +220,7 @@ class GridRenderer {
   drawMine(cell, x, y) {
     const centerX = x + this.cellSize / 2;
     const centerY = y + this.cellSize / 2;
-    const emoji = this.getMonsterEmoji(cell);
+    const emoji = this.getMineEmoji(cell);
 
     this.ctx.font = '22px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
     this.ctx.textAlign = 'center';
@@ -229,12 +233,29 @@ class GridRenderer {
    * @param {Cell} cell - Mine cell
    * @returns {string}
    */
-  getMonsterEmoji(cell) {
+  getMineEmoji(cell) {
+    const visual = this.resolveCellVisual(cell);
+    if (visual && visual.emoji) return visual.emoji;
+
     const def = getMonsterDefinition(cell.monsterType || 'slime');
     if (!def) {
       return cell.monsterCleared ? '💀' : '👾';
     }
     return cell.monsterCleared ? def.clearedEmoji : def.emoji;
+  }
+
+  /**
+   * Resolve runtime visual payload from Game when available.
+   * @param {Cell} cell
+   * @returns {Object|null}
+   */
+  resolveCellVisual(cell) {
+    if (!this.cellVisualResolver) return null;
+    try {
+      return this.cellVisualResolver(cell) || null;
+    } catch (error) {
+      return null;
+    }
   }
 
   /**

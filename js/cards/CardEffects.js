@@ -74,7 +74,7 @@ class CardEffects {
       case 'single':
         // Single cell target
         if (this.isCell(target)) {
-          if (target.revealed) {
+          if (!target.covered) {
             return { valid: false, reason: '目标已揭示' };
           }
           return { valid: true };
@@ -196,23 +196,23 @@ class CardEffects {
    * @returns {Object} Result object
    */
   static revealCell(cell, gameState) {
-    if (cell.revealed) {
+    if (!cell.covered) {
       return { success: false, reason: 'Cell already revealed' };
     }
 
-    cell.revealed = true;
-
-    // If it's a mine, protect it
-    if (cell.isMine) {
-      cell.protected = true;
-    } else {
-      // Check for flood-fill if it's an empty cell
-      if (cell.adjacentMines === 0 && gameState.grid) {
-        gameState.grid.revealEmptyArea(cell.row, cell.col);
-      }
+    if (!gameState.grid) {
+      return { success: false, reason: 'Grid not available' };
     }
 
-    EventBus.emit('cellRevealed', { cell });
+    // "Safe reveal" semantics: mine targets are auto-protected before reveal.
+    if (cell.isMine && !cell.protected) {
+      cell.protected = true;
+    }
+
+    const safe = gameState.grid.revealCell(cell.row, cell.col);
+    if (!safe) {
+      return { success: false, reason: 'Hit mine while revealing' };
+    }
 
     return { success: true };
   }
@@ -232,7 +232,7 @@ class CardEffects {
       case 'scout':
         // Scout cards are more powerful when many cells are hidden
         if (gameState.grid) {
-          const hiddenCells = gameState.grid.getAllCells().filter(c => !c.revealed).length;
+          const hiddenCells = gameState.grid.getAllCells().flat().filter((c) => c.covered).length;
           power += Math.floor(hiddenCells / 10);
         }
         break;
