@@ -157,6 +157,11 @@ class GridRenderer {
     this.ctx.fillStyle = bgColor;
     this.ctx.fillRect(x, y, this.cellSize, this.cellSize);
 
+    // Make uncovered cells visually distinct from covered cells.
+    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeRect(x + 0.5, y + 0.5, this.cellSize - 1, this.cellSize - 1);
+
     if (cell.isMine) {
       this.drawMine(cell, x, y);
     } else if (cell.adjacentMines > 0) {
@@ -173,9 +178,17 @@ class GridRenderer {
   drawCoverLayer(cell, x, y) {
     if (!cell.covered) return;
 
-    const bgColor = cell.flagged ? CONFIG.colors.cell.flag : CONFIG.colors.cell.hidden;
+    const bgColor = cell.flagged ? CONFIG.colors.cell.flag : '#243244';
     this.ctx.fillStyle = bgColor;
     this.ctx.fillRect(x, y, this.cellSize, this.cellSize);
+
+    // Covered layer has stronger bevel to avoid confusion with revealed tiles.
+    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeRect(x + 0.5, y + 0.5, this.cellSize - 1, this.cellSize - 1);
+
+    this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
+    this.ctx.strokeRect(x + 1.5, y + 1.5, this.cellSize - 3, this.cellSize - 3);
 
     if (cell.flagged) {
       this.drawFlag(x, y);
