@@ -109,7 +109,8 @@ const CONFIG = {
 
   // Debug settings
   debug: {
-    enabled: false
+    enabled: false,
+    xrayLayout: false
   },
 
   // Card settings

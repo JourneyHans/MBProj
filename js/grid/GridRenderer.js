@@ -17,6 +17,7 @@ class GridRenderer {
     this.targetPreviewCell = null;
     this.targetPreviewValid = true;
     this.cellVisualResolver = null;
+    this.debugXrayMode = Boolean(CONFIG.debug && CONFIG.debug.xrayLayout);
   }
 
   /**
@@ -25,6 +26,15 @@ class GridRenderer {
    */
   setCellVisualResolver(resolver) {
     this.cellVisualResolver = typeof resolver === 'function' ? resolver : null;
+  }
+
+  /**
+   * Enable/disable xray overlay for covered layer.
+   * @param {boolean} enabled
+   */
+  setDebugXrayMode(enabled) {
+    this.debugXrayMode = Boolean(enabled);
+    this.markAllDirty();
   }
 
   /**
@@ -179,16 +189,18 @@ class GridRenderer {
   drawCoverLayer(cell, x, y) {
     if (!cell.covered) return;
 
+    const xrayVisible = this.debugXrayMode && this.grid && this.grid.initialized;
     const bgColor = cell.flagged ? CONFIG.colors.cell.flag : '#1b2432';
-    this.ctx.fillStyle = bgColor;
+    const fillColor = xrayVisible && !cell.flagged ? 'rgba(27, 36, 50, 0.35)' : bgColor;
+    this.ctx.fillStyle = fillColor;
     this.ctx.fillRect(x, y, this.cellSize, this.cellSize);
 
     // Strong bevel for covered tiles: clearly raised compared to revealed layer.
-    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+    this.ctx.strokeStyle = xrayVisible ? 'rgba(255, 255, 255, 0.10)' : 'rgba(255, 255, 255, 0.22)';
     this.ctx.lineWidth = 1;
     this.ctx.strokeRect(x + 0.5, y + 0.5, this.cellSize - 1, this.cellSize - 1);
 
-    this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.38)';
+    this.ctx.strokeStyle = xrayVisible ? 'rgba(0, 0, 0, 0.16)' : 'rgba(0, 0, 0, 0.38)';
     this.ctx.strokeRect(x + 1.5, y + 1.5, this.cellSize - 3, this.cellSize - 3);
 
     if (cell.flagged) {

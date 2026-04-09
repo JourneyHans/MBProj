@@ -78,6 +78,7 @@ class Game {
     this.pendingCardConfirmation = null;
     this.previewTargetCell = null;
     this.debugEnabled = Boolean(CONFIG.debug && CONFIG.debug.enabled);
+    this.debugXrayLayoutEnabled = Boolean(CONFIG.debug && CONFIG.debug.xrayLayout);
 
     // Player state
     this.player = {
@@ -96,6 +97,7 @@ class Game {
     this.eventTimeline = [];
     this.shopState = this.createInitialShopState();
     this.eventShopUI = {};
+    this.debugUI = {};
 
     // Setup event listeners
     this.setupEventListeners();
@@ -112,6 +114,9 @@ class Game {
     // Create grid renderer
     this.gridRenderer = new GridRenderer(canvas);
     this.gridRenderer.setCellVisualResolver((cell) => this.resolveCellVisualProfile(cell));
+    if (this.gridRenderer.setDebugXrayMode) {
+      this.gridRenderer.setDebugXrayMode(this.debugXrayLayoutEnabled);
+    }
 
     // Setup input handlers
     this.setupInputHandlers();
@@ -119,6 +124,7 @@ class Game {
     // Initialize card system
     this.initializeCardSystem();
     this.initializeEventShopUI();
+    this.initializeDebugUI();
 
     // Setup responsive canvas
     this.resizeCanvas();
@@ -2270,6 +2276,49 @@ class Game {
       });
     }
     this.renderEventShopPanel();
+  }
+
+  /**
+   * Bind debug controls.
+   */
+  initializeDebugUI() {
+    this.debugUI = {
+      xrayToggleButton: document.getElementById('debug-xray-toggle')
+    };
+    if (!this.debugUI.xrayToggleButton) return;
+    this.debugUI.xrayToggleButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.toggleDebugXrayLayout();
+    });
+    this.refreshDebugUIButtonState();
+  }
+
+  /**
+   * Toggle debug xray layout.
+   */
+  toggleDebugXrayLayout() {
+    this.debugXrayLayoutEnabled = !this.debugXrayLayoutEnabled;
+    if (this.gridRenderer && this.gridRenderer.setDebugXrayMode) {
+      this.gridRenderer.setDebugXrayMode(this.debugXrayLayoutEnabled);
+    }
+    this.refreshDebugUIButtonState();
+    if (this.gridRenderer) {
+      this.render();
+    }
+    const enabled = this.debugXrayLayoutEnabled;
+    if (enabled && this.grid && !this.grid.initialized) {
+      this.showToast('透视模式已开启：首击后生效。', 1200);
+      return;
+    }
+    this.showToast(`透视模式已${enabled ? '开启' : '关闭'}。`, 900);
+  }
+
+  /**
+   * Sync button text with runtime state.
+   */
+  refreshDebugUIButtonState() {
+    if (!this.debugUI || !this.debugUI.xrayToggleButton) return;
+    this.debugUI.xrayToggleButton.textContent = this.debugXrayLayoutEnabled ? '透视：开' : '透视：关';
   }
 
   /**
