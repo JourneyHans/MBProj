@@ -318,13 +318,6 @@ class Game {
       return;
     }
 
-    // First click initialization
-    if (!this.grid.initialized) {
-      this.grid.initialize({ row, col });
-      this.initializeActEventsFromGrid();
-      this.stats.startTime = Date.now();
-    }
-
     const revealedBefore = this.grid.getStats().revealedCount;
     const safe = this.grid.revealCell(row, col);
     const revealedAfter = this.grid.getStats().revealedCount;
@@ -367,10 +360,16 @@ class Game {
 
     this.grid = new Grid(rows, cols, mineCount);
     this.gridRenderer.setGrid(this.grid);
+    // Initialize immediately so xray can inspect full pregenerated layout anytime.
+    const initSeedCell = {
+      row: Math.floor(Math.random() * rows),
+      col: Math.floor(Math.random() * cols)
+    };
+    this.grid.initialize(initSeedCell);
 
     this.stats.minesRemaining = mineCount;
     this.stats.timeElapsed = 0;
-    this.stats.startTime = 0;
+    this.stats.startTime = Date.now();
     this.stats.turn = 0;
     this.stats.monstersResolved = 0;
     this.stats.hardPassStreak = 0;
@@ -388,6 +387,7 @@ class Game {
     this.actState = this.createInitialActState();
     this.eventTimeline = [];
     this.shopState = this.createInitialShopState();
+    this.initializeActEventsFromGrid();
     this.hideMonsterHoverInfo();
 
     // Clear visual effects from previous game
@@ -2050,9 +2050,20 @@ class Game {
    * @param {Object|null} cell
    * @returns {{emoji:string,name:string,eventType?:string,eventSubType?:string}|null}
    */
-  resolveCellVisualProfile(cell) {
+  resolveCellVisualProfile(cell, options = {}) {
     if (!cell || !cell.isMine) return null;
+    const { forceEventView = false } = options;
     const eventNode = this.getActEventNodeByCell(cell);
+
+    if (forceEventView && eventNode) {
+      const eventDef = getEventDefinition(eventNode.eventId) || this.resolveSingleEventDefinition(eventNode.type, eventNode.subType);
+      return {
+        emoji: eventDef && eventDef.emoji ? eventDef.emoji : getEventTypeEmoji(eventNode.type),
+        name: eventDef && eventDef.name ? eventDef.name : `${eventNode.type}/${eventNode.subType}`,
+        eventType: eventNode.type,
+        eventSubType: eventNode.subType
+      };
+    }
 
     if (this.activeMonsterEncounter && this.isActiveMonsterCell(cell.row, cell.col)) {
       return {
@@ -2306,10 +2317,6 @@ class Game {
       this.render();
     }
     const enabled = this.debugXrayLayoutEnabled;
-    if (enabled && this.grid && !this.grid.initialized) {
-      this.showToast('透视模式已开启：首击后生效。', 1200);
-      return;
-    }
     this.showToast(`透视模式已${enabled ? '开启' : '关闭'}。`, 900);
   }
 
