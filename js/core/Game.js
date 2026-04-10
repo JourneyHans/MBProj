@@ -286,9 +286,23 @@ class Game {
   handleCellLeftClick(row, col) {
     if (!this.grid) return;
     const clickedCell = this.grid.getCell(row, col);
+    const isDebugVisible = this.debugXrayLayoutEnabled && clickedCell && clickedCell.covered;
+    const isVisuallyOpenMine = clickedCell
+      && this.isCellVisibleForInfo(clickedCell)
+      && clickedCell.isMine
+      && !clickedCell.monsterCleared;
 
-    // Clicking uncovered unresolved mine cells should open or inspect encounter info.
-    if (clickedCell && !clickedCell.covered && clickedCell.isMine && !clickedCell.monsterCleared) {
+    // Clicking visible unresolved mine cells should inspect info.
+    if (isVisuallyOpenMine) {
+      // In debug xray, covered mines are only inspectable, not enterable.
+      if (isDebugVisible) {
+        const visual = this.resolveCellVisualProfile(clickedCell, { forceEventView: true });
+        const infoTitle = visual && visual.name ? visual.name : '未知事件';
+        const infoType = visual && visual.eventType ? `${visual.eventType}/${visual.eventSubType}` : 'unknown';
+        this.showToast(`透视信息：${infoTitle} (${infoType})`, 1600);
+        return;
+      }
+
       if (this.activeMonsterEncounter && this.isActiveMonsterCell(row, col)) {
         const encounter = this.activeMonsterEncounter;
         const info = `${encounter.emoji} ${encounter.name} HP:${encounter.hp}/${encounter.maxHp} 意图:${encounter.intent.label}`;
@@ -1045,13 +1059,15 @@ class Game {
     const infoEl = document.getElementById('monster-hover-info');
     if (!infoEl) return;
 
-    if (!cell || cell.covered || !cell.isMine) {
+    if (!cell || !this.isCellVisibleForInfo(cell) || !cell.isMine) {
       this.hideMonsterHoverInfo();
       return;
     }
 
     const eventNode = this.getActEventNodeByCell(cell);
-    const visual = this.resolveCellVisualProfile(cell);
+    const visual = this.resolveCellVisualProfile(cell, {
+      forceEventView: this.debugXrayLayoutEnabled && cell.covered
+    });
     const definition = getMonsterDefinition(cell.monsterType || '');
     const isActive = this.activeMonsterEncounter
       && this.isActiveMonsterCell(cell.row, cell.col);
@@ -2042,6 +2058,16 @@ class Game {
   getActEventNodeByCell(cell) {
     if (!cell) return null;
     return this.getActEventNodeByCoords(cell.row, cell.col);
+  }
+
+  /**
+   * Whether a cell is currently visible for inspection.
+   * @param {Object|null} cell
+   * @returns {boolean}
+   */
+  isCellVisibleForInfo(cell) {
+    if (!cell) return false;
+    return !cell.covered || this.debugXrayLayoutEnabled;
   }
 
   /**
